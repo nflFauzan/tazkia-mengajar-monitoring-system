@@ -34,7 +34,7 @@ const prisma = new PrismaClient({
 
 /** Development-only credentials. Never reuse these in production. */
 const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "tazkia-dev-2026";
+const ADMIN_PASSWORD = "tazkia-mengajar";
 
 /** Builds a `@db.Date` value from a plain calendar date. */
 function calendarDate(year: number, month: number, day: number): Date {
