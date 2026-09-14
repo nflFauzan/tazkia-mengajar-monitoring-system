@@ -1,0 +1,444 @@
+// Tazkia Mengajar Monitoring System — database schema
+// See docs/database-design.md for the ER diagram and the reasoning behind the
+// deletion rules. In short: master data that history references is archived,
+// never hard-deleted; rows owned by a parent cascade from it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Only ADMIN exists in the MVP. The column exists so future roles do not
+/// require a migration of every authorization call site.
+enum Role {
+  ADMIN
+}
+
+enum AttendanceStatus {
+  HADIR
+  IZIN
+  SAKIT
+  ALPA
+}
+
+enum ActivityStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
+enum Recurrence {
+  WEEKLY
+  CUSTOM
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(cuid())
+  username     String  @unique
+  passwordHash String
+  name         String
+  role         Role    @default(ADMIN)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activitiesCreated Activity[] @relation("ActivityCreatedBy")
+  activitiesUpdated Activity[] @relation("ActivityUpdatedBy")
+  reportsCreated    Report[]   @relation("ReportCreatedBy")
+
+  @@index([isActive])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Master data
+// ---------------------------------------------------------------------------
+
+model Location {
+  id          String  @id @default(cuid())
+  name        String
+  partner     String
+  address     String
+  category    String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentGroups StudentGroup[]
+  schedules     Schedule[]
+  activities    Activity[]
+
+  @@index([isActive])
+  @@index([name])
+  @@map("locations")
+}
+
+/// Pengajar, Pembimbing and Anggota Tim are deliberately one entity
+/// (CLAUDE.md 13). `status` is a free-text label such as "Pengajar" or
+/// "Pembimbing", not a role with authorization meaning.
+model TeamMember {
+  id       String  @id @default(cuid())
+  fullName String
+  nickname String?
+  status   String?
+  phone    String?
+  photoUrl String?
+  notes    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scheduleAssignments ScheduleTeamMember[]
+  activityAttendances ActivityTeamMember[]
+
+  @@index([isActive])
+  @@index([fullName])
+  @@map("team_members")
+}
+
+/// A location may group its students however it likes: "Kelas Anak", "Remaja",
+/// "Tahsin", "Kelompok A". Nothing assumes school-style classes (CLAUDE.md 14).
+model StudentGroup {
+  id          String  @id @default(cuid())
+  locationId  String
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  location       Location               @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  students       Student[]
+  scheduleGroups ScheduleStudentGroup[]
+
+  @@unique([locationId, name])
+  @@index([locationId])
+  @@index([isActive])
+  @@map("student_groups")
+}
+
+model Student {
+  id             String    @id @default(cuid())
+  studentGroupId String
+  fullName       String
+  gender         Gender?
+  birthDate      DateTime? @db.Date
+  notes          String?
+  isActive       Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  studentGroup StudentGroup      @relation(fields: [studentGroupId], references: [id], onDelete: Cascade)
+  attendances  ActivityStudent[]
+
+  @@index([studentGroupId])
+  @@index([isActive])
+  @@index([fullName])
+  @@map("students")
+}
+
+// ---------------------------------------------------------------------------
+// Curriculum: Curriculum -> Period -> Material
+// ---------------------------------------------------------------------------
+
+model Curriculum {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  periods CurriculumPeriod[]
+
+  @@index([isActive])
+  @@map("curriculums")
+}
+
+model CurriculumPeriod {
+  id           String @id @default(cuid())
+  curriculumId String
+  name         String
+  orderIndex   Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  curriculum Curriculum           @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  materials  CurriculumMaterial[]
+
+  @@unique([curriculumId, name])
+  @@index([curriculumId])
+  @@map("curriculum_periods")
+}
+
+model CurriculumMaterial {
+  id           String  @id @default(cuid())
+  periodId     String
+  title        String
+  meetingLabel String?
+  objective    String?
+  description  String?
+  notes        String?
+  orderIndex   Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  period            CurriculumPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  activityMaterials ActivityMaterial[]
+
+  @@index([periodId])
+  @@index([isActive])
+  @@map("curriculum_materials")
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling — a plan, never proof that anything happened
+// ---------------------------------------------------------------------------
+
+model Schedule {
+  id         String     @id @default(cuid())
+  locationId String
+  title      String
+  recurrence Recurrence @default(WEEKLY)
+  /// 0 = Sunday ... 6 = Saturday. A fixed, tiny, non-referential domain, so an
+  /// array is used instead of a join table (see docs/database-design.md 6).
+  daysOfWeek Int[]
+  startDate  DateTime   @db.Date
+  endDate    DateTime?  @db.Date
+  startTime  String
+  endTime    String
+  notes      String?
+  isActive   Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  location      Location               @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  teamMembers   ScheduleTeamMember[]
+  studentGroups ScheduleStudentGroup[]
+  activities    Activity[]
+
+  @@index([locationId])
+  @@index([isActive])
+  @@index([startDate])
+  @@map("schedules")
+}
+
+model ScheduleTeamMember {
+  id           String @id @default(cuid())
+  scheduleId   String
+  teamMemberId String
+
+  createdAt DateTime @default(now())
+
+  schedule   Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([scheduleId, teamMemberId])
+  @@index([teamMemberId])
+  @@map("schedule_team_members")
+}
+
+model ScheduleStudentGroup {
+  id             String @id @default(cuid())
+  scheduleId     String
+  studentGroupId String
+
+  createdAt DateTime @default(now())
+
+  schedule     Schedule     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  studentGroup StudentGroup @relation(fields: [studentGroupId], references: [id], onDelete: Restrict)
+
+  @@unique([scheduleId, studentGroupId])
+  @@index([studentGroupId])
+  @@map("schedule_student_groups")
+}
+
+// ---------------------------------------------------------------------------
+// Activity — the source of truth for a teaching session that actually happened
+// ---------------------------------------------------------------------------
+
+model Activity {
+  id         String  @id @default(cuid())
+  locationId String
+  /// Optional link back to the plan this realized. SetNull on delete: removing
+  /// a plan must never erase the record of what actually happened.
+  scheduleId String?
+
+  date      DateTime @db.Date
+  startTime String
+  endTime   String
+
+  /// Defaults from the location but stays editable: the same place can host a
+  /// session with a different mitra.
+  partner String
+
+  beneficiary String
+  /// Always required and always authoritative, whether or not individual
+  /// student rows exist (PRD 12).
+  beneficiaryCount Int
+  aidType          String
+  notes            String?
+
+  status ActivityStatus @default(DRAFT)
+
+  createdById String
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  location    Location             @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  schedule    Schedule?            @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  createdBy   User                 @relation("ActivityCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?                @relation("ActivityUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  teamMembers ActivityTeamMember[]
+  students    ActivityStudent[]
+  materials   ActivityMaterial[]
+  documents   Documentation[]
+  report      Report?
+
+  @@index([date])
+  @@index([status])
+  @@index([locationId])
+  @@index([date, status])
+  @@index([scheduleId])
+  @@map("activities")
+}
+
+model ActivityTeamMember {
+  id           String           @id @default(cuid())
+  activityId   String
+  teamMemberId String
+  attendance   AttendanceStatus @default(HADIR)
+  note         String?
+  /// Preserves the order the admin chose, because the report lists the team in
+  /// that order (PRD 18).
+  orderIndex   Int              @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([activityId, teamMemberId])
+  @@index([teamMemberId])
+  @@index([attendance])
+  @@map("activity_team_members")
+}
+
+model ActivityStudent {
+  id         String           @id @default(cuid())
+  activityId String
+  studentId  String
+  attendance AttendanceStatus @default(HADIR)
+  note       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([activityId, studentId])
+  @@index([studentId])
+  @@index([attendance])
+  @@map("activity_students")
+}
+
+model ActivityMaterial {
+  id         String @id @default(cuid())
+  activityId String
+  materialId String
+
+  createdAt DateTime @default(now())
+
+  activity Activity           @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  material CurriculumMaterial @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  @@unique([activityId, materialId])
+  @@index([materialId])
+  @@map("activity_materials")
+}
+
+// ---------------------------------------------------------------------------
+// Documentation — metadata only; bytes live in object storage
+// ---------------------------------------------------------------------------
+
+model Documentation {
+  id               String  @id @default(cuid())
+  activityId       String
+  originalFilename String
+  storedFilename   String
+  mimeType         String
+  size             Int
+  /// Object-storage pathname, used to delete the blob when the row is removed.
+  storageKey       String
+  url              String
+  /// True when the file was stored as WebP after conversion.
+  isImage          Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@map("documentation")
+}
+
+// ---------------------------------------------------------------------------
+// Report
+// ---------------------------------------------------------------------------
+
+model Report {
+  id         String @id @default(cuid())
+  activityId String @unique
+
+  /// The full rendered WhatsApp-ready text, stored so past reports stay exactly
+  /// as they were sent even if a template or master record later changes.
+  content String
+  narrative String
+  /// Once true, the narrative is never silently regenerated (CLAUDE.md 23).
+  narrativeEdited Boolean @default(false)
+
+  generatedAt DateTime @default(now())
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activity  Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("ReportCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([generatedAt])
+  @@map("reports")
+}
