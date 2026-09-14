@@ -44,6 +44,18 @@ export function fromZodError(error: z.ZodError): ActionResult<never> {
 }
 
 /**
+ * Reads a checkbox that is paired with a hidden fallback input of the same name.
+ *
+ * Browsers omit an unchecked checkbox from FormData entirely, so forms send a
+ * hidden `false` first and let the checkbox append `true`. `formData.get()`
+ * returns only the *first* match, which is always the hidden `false` — so the
+ * value must be read from the full list instead.
+ */
+export function readCheckbox(formData: FormData, name: string): boolean {
+  return formData.getAll(name).includes("true");
+}
+
+/**
  * Logs the real error server-side and returns a human message.
  *
  * Every action funnels unexpected failures through here so a Prisma or driver
