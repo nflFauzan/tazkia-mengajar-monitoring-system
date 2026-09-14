@@ -30,12 +30,16 @@ export function ListSearch({
 
   const currentValue = searchParams.get(paramName) ?? "";
   const [value, setValue] = useState(currentValue);
+  const [syncedValue, setSyncedValue] = useState(currentValue);
 
-  // Keep the box in step when the URL changes from elsewhere (back button, a
-  // cleared filter), without fighting the user while they are typing.
-  useEffect(() => {
+  // Keep the box in step when the URL changes from elsewhere — the back button,
+  // or a filter cleared on another control — without fighting the user while
+  // they type. React's documented way to reset state from a changed prop is to
+  // adjust it during render, not from an effect.
+  if (currentValue !== syncedValue) {
+    setSyncedValue(currentValue);
     setValue(currentValue);
-  }, [currentValue]);
+  }
 
   useEffect(() => {
     if (value === currentValue) return;
