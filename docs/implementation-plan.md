@@ -19,6 +19,23 @@ checks pass; errors are fixed before the next phase begins.
 | Excel export | ExcelJS | Actively maintained, works in serverless |
 | Dates | `date-fns` with the `id` locale | Indonesian day/date formatting required by the report template |
 | Tests | Vitest over report, narrative, validation and attendance logic | Business logic is where regressions actually hurt |
+| Prisma version | Pinned exactly to **7.10.0** (`--save-exact`) for both `prisma` and `@prisma/client` | npm's `latest` tag currently points at `8.0.0-rc.15`, a release candidate. Installing unpinned produced a CLI/client version mismatch and a broken tree. Never install Prisma here without an explicit version. |
+
+## Environment notes
+
+Findings from Phase 0 that cost time and should not be rediscovered:
+
+- **npm is very slow on this machine** (10–20 minutes for a single install), most
+  likely Defender scanning `node_modules`. Never run two `npm install` commands
+  concurrently against this tree — doing so corrupted `node_modules` once and
+  required a repair install.
+- **`create-next-app` refuses any non-empty directory**, including stray `.md`
+  files, so the spec files had to be moved aside before scaffolding.
+- **Next.js 16 writes `AGENTS.md`** describing breaking changes from earlier
+  versions. Read `node_modules/next/dist/docs/` before writing App Router code
+  rather than relying on Next 14/15 habits.
+- The scaffold ignores `.env*` wholesale; `!.env.example` was added so the
+  template stays tracked.
 
 ## Phase 0 — Analysis (done)
 
