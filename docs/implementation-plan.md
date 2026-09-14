@@ -37,6 +37,43 @@ Findings from Phase 0 that cost time and should not be rediscovered:
 - The scaffold ignores `.env*` wholesale; `!.env.example` was added so the
   template stays tracked.
 
+## Revised scope (agreed mid-build)
+
+The original brief asked for all 15 phases through a verified Vercel
+deployment. Partway through, the remaining cost was reviewed and the scope was
+narrowed by agreement to the **critical path that makes the application
+usable**:
+
+| Phase | In scope? |
+|---|---|
+| 0–4 Analysis, init, database, auth, shell | Yes — done |
+| 5 Master data CRUD | Yes |
+| 7 Activity wizard | Yes |
+| 8 Documentation upload | Yes |
+| 9 Report generation | Yes — done early, the seed depends on it |
+| 10 Dashboard | Yes |
+| 6 Scheduling + calendar | Deferred — schema and seed exist, UI later |
+| 11 Excel export | Deferred |
+| 14–15 Vercel deployment and production verification | Deferred |
+
+Nothing deferred has been stubbed or faked. The schema already supports all of
+it, so the deferred phases are additive UI work, not rework.
+
+## Status at the last checkpoint
+
+Done and verified:
+
+- Next.js 16 + React 19 + Tailwind v4 + shadcn/ui (Base UI based) scaffold.
+- Full Prisma schema, initial migration (17 tables, 5 enums), re-runnable seed.
+- `lib/reports` — template, narrative, validation, `generateActivityReport`.
+  Output diffed against the PRD section 17 template and matches.
+- Authentication: bcrypt hashing, jose session cookie, `requireUser`,
+  `src/proxy.ts` gate, login page and logout.
+- Navigation tree, root layout, `/` redirect.
+
+Next up, in order: app shell (sidebar, header, page container, reusable table
+and form pieces), then master data CRUD, then the activity wizard.
+
 ## Phase 0 — Analysis (done)
 
 - Read CLAUDE.md and the PRD in full.
