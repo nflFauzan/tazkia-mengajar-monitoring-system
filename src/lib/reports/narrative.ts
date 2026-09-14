@@ -1,4 +1,4 @@
-import { formatHari, formatTanggal } from "@/lib/utils/date";
+import { formatHari, formatTanggal } from "@/lib/dates";
 
 import type { ReportActivityInput } from "./types";
 
