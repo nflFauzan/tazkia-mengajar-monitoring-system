@@ -1,16 +1,24 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { GraduationCap } from "lucide-react";
 
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Masuk",
   description: "Masuk ke Tazkia Mengajar Monitoring System.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Checked here rather than in the proxy: this verifies the account still
+  // exists, so a stale-but-signed cookie lands on the form instead of being
+  // bounced between here and the dashboard.
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
+
   return (
     <main className="bg-muted/40 flex min-h-svh items-center justify-center p-4">
       <div className="w-full max-w-sm">

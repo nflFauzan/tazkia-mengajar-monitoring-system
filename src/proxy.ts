@@ -19,10 +19,12 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const user = token ? await verifySessionToken(token) : null;
 
+  // The login page is never redirected away from here. The proxy can only check
+  // the token's signature, while the page itself checks that the account still
+  // exists — if this bounced a token-valid-but-account-gone visitor to the
+  // dashboard, that page would bounce them straight back and the two would loop.
+  // Sending an already-signed-in user to the dashboard is the login page's job.
   if (pathname === "/login") {
-    if (user) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
     return NextResponse.next();
   }
 
