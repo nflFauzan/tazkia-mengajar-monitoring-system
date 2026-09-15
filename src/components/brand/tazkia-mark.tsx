@@ -1,44 +1,43 @@
+import Image from "next/image";
+
 import { cn } from "@/lib/utils";
 
+import logo from "../../../public/brand/logo-tazkia-mengajar.png";
+
 /**
- * The Tazkia Mengajar mark.
+ * The Tazkia Mengajar mark: a "tm" ligature sitting in a smile.
  *
- * NOTE: this is an approximation, redrawn from the 150px Instagram profile
- * image — the only version available. It follows the same idea (a blue
- * monogram on a white disc that reads as a smiling face) and uses the sampled
- * brand blue, but it is not the official artwork. Replace this component's SVG
- * with the real asset when the source file is to hand; nothing else needs to
- * change, since every usage goes through this one component.
+ * This is the supplied artwork, not a redrawing — trimmed of its margin and
+ * with the white ground knocked out to transparency so it sits on any surface.
  *
- * Inline SVG rather than an image file so it stays crisp at any size, inherits
- * the brand colour from a CSS variable, and needs no network request.
+ * The source is only 74x70px once trimmed, so the asset ships at 2x that and
+ * the mark should not be rendered much larger than 64px or it will soften.
+ * If a vector or higher-resolution original turns up, replacing the file in
+ * public/brand is the only change needed — every usage goes through here.
  */
-export function TazkiaMark({ className }: { className?: string }) {
+export function TazkiaMark({
+  className,
+  withRing = true,
+}: {
+  className?: string;
+  /** The white disc and border. Turn off to place the mark on its own. */
+  withRing?: boolean;
+}) {
   return (
     <span
       className={cn(
-        "border-border bg-card inline-flex items-center justify-center rounded-full border-2",
+        "inline-flex items-center justify-center",
+        withRing && "border-border bg-card rounded-full border-2",
         className,
       )}
     >
-      <svg
-        viewBox="0 0 64 64"
-        className="size-[70%] overflow-visible"
-        fill="none"
-        role="img"
-        aria-label="Logo Tazkia Mengajar"
-      >
-        {/* Eyes. */}
-        <circle cx="21" cy="19" r="4.5" fill="var(--brand)" />
-        <circle cx="43" cy="19" r="4.5" fill="var(--brand)" />
-        {/* Smile: an open bowl with round caps, the mark's dominant form. */}
-        <path
-          d="M15 33a17 17 0 0 0 34 0"
-          stroke="var(--brand)"
-          strokeWidth="8"
-          strokeLinecap="round"
-        />
-      </svg>
+      <Image
+        src={logo}
+        alt="Logo Tazkia Mengajar"
+        className={cn("object-contain", withRing ? "size-[70%]" : "size-full")}
+        // Part of the shell on every page, so it should never fade in late.
+        priority
+      />
     </span>
   );
 }
