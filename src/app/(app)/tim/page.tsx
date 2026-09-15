@@ -96,7 +96,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
           action={search ? undefined : <AddTeamMemberButton />}
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>

@@ -169,7 +169,7 @@ export function DocumentationPanel({
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {documents.map((doc) => (
-            <li key={doc.id} className="overflow-hidden rounded-lg border">
+            <li key={doc.id} className="border-border overflow-hidden rounded-lg border-2 shadow-[var(--shadow-brutal)]">
               <a
                 href={doc.url}
                 target="_blank"

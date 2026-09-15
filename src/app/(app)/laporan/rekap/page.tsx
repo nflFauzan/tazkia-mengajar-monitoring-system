@@ -182,8 +182,8 @@ export default async function RekapPage({
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-3 font-semibold">Per Tempat</h2>
-        <div className="rounded-lg border">
+        <h2 className="font-heading mb-3 text-lg tracking-tight">Per Tempat</h2>
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -220,8 +220,8 @@ export default async function RekapPage({
       </section>
 
       <section>
-        <h2 className="mb-3 font-semibold">Kehadiran Tim</h2>
-        <div className="rounded-lg border">
+        <h2 className="font-heading mb-3 text-lg tracking-tight">Kehadiran Tim</h2>
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>

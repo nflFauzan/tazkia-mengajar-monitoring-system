@@ -46,8 +46,8 @@ export default async function PengaturanPage() {
       />
 
       <section className="mb-8">
-        <h2 className="mb-3 font-semibold">Admin</h2>
-        <div className="rounded-lg border">
+        <h2 className="font-heading mb-3 text-lg tracking-tight">Admin</h2>
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -103,7 +103,7 @@ export default async function PengaturanPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 font-semibold">Sistem</h2>
+        <h2 className="font-heading mb-3 text-lg tracking-tight">Sistem</h2>
         <dl className="grid gap-x-6 gap-y-3 rounded-lg border p-4 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground text-xs">

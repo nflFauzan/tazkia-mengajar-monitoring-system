@@ -90,7 +90,7 @@ export function ActivityInfoForm({
           id="locationId"
           name="locationId"
           defaultValue={activity?.locationId ?? ""}
-          className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+          className="border-input bg-card h-9 w-full rounded-md border-2 px-3 text-sm font-medium shadow-[var(--shadow-brutal-sm)]"
         >
           <option value="">Pilih tempat</option>
           {locations.map((location) => (

@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-svh">
-      <aside className="bg-background hidden w-64 shrink-0 border-r lg:block">
+      <aside className="bg-card hidden w-64 shrink-0 border-r-2 border-border lg:block">
         <div className="sticky top-0 h-svh">
           <AppSidebar />
         </div>

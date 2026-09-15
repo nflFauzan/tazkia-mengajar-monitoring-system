@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { GraduationCap } from "lucide-react";
 
+import { TazkiaMark } from "@/components/brand/tazkia-mark";
 import { LoginForm } from "@/components/auth/login-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -20,13 +20,11 @@ export default async function LoginPage() {
   if (user) redirect("/dashboard");
 
   return (
-    <main className="bg-muted/40 flex min-h-svh items-center justify-center p-4">
+    <main className="flex min-h-svh items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="bg-primary text-primary-foreground mb-4 flex size-12 items-center justify-center rounded-xl">
-            <GraduationCap className="size-6" />
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">
+          <TazkiaMark className="mb-4 size-16" />
+          <h1 className="font-heading text-2xl tracking-tight uppercase">
             Tazkia Mengajar
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -34,7 +32,7 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-card rounded-xl border p-6 shadow-sm">
+        <div className="bg-card border-border rounded-lg border-2 p-6 shadow-[var(--shadow-brutal-lg)]">
           {/*
             LoginForm reads the `next` query parameter, so it must sit inside a
             Suspense boundary — useSearchParams opts the subtree into client-side

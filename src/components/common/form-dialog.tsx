@@ -254,7 +254,7 @@ export function SelectField({
         defaultValue={defaultValue ?? ""}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${name}-error` : undefined}
-        className="border-input bg-background focus-visible:ring-ring aria-invalid:border-destructive h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+        className="border-input bg-card aria-invalid:border-destructive h-9 w-full rounded-md border-2 px-3 text-sm font-medium shadow-[var(--shadow-brutal-sm)] focus-visible:outline-none"
       >
         {placeholder ? <option value="">{placeholder}</option> : null}
         {options.map((option) => (
@@ -287,7 +287,7 @@ export function ActiveField({ defaultChecked = true }: { defaultChecked?: boolea
         type="checkbox"
         value="true"
         defaultChecked={defaultChecked}
-        className="border-input size-4 rounded border"
+        className="border-input size-4 rounded-sm border-2 accent-[var(--brand)]"
       />
       <Label htmlFor="isActive" className="font-normal">
         Aktif

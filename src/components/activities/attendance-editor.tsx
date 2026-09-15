@@ -171,7 +171,7 @@ export function AttendanceEditor({
         </div>
       </div>
 
-      <ul className="divide-y rounded-lg border">
+      <ul className="divide-y-2 divide-border/15 border-border rounded-lg border-2 shadow-[var(--shadow-brutal)] overflow-hidden">
         {candidates.map((candidate) => {
           const entry = entries.get(candidate.id);
           const selected = Boolean(entry);
@@ -187,7 +187,7 @@ export function AttendanceEditor({
                     type="checkbox"
                     checked={selected}
                     onChange={() => toggle(candidate.id)}
-                    className="border-input size-4 shrink-0 rounded border"
+                    className="border-input size-4 shrink-0 rounded-sm border-2 accent-[var(--brand)]"
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">

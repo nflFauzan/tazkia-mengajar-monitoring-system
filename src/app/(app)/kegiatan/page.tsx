@@ -132,7 +132,7 @@ export default async function KegiatanPage({
           action={<ButtonLink href="/kegiatan/baru">Buat kegiatan</ButtonLink>}
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>

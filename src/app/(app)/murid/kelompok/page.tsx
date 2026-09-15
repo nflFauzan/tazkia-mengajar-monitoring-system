@@ -125,7 +125,7 @@ export default async function KelompokPage({
           }
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>

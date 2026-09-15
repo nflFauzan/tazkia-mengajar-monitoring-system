@@ -103,7 +103,7 @@ export function MaterialPicker({
             <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
               {group}
             </h3>
-            <ul className="divide-y rounded-lg border">
+            <ul className="divide-y-2 divide-border/15 border-border rounded-lg border-2 shadow-[var(--shadow-brutal)] overflow-hidden">
               {items.map((material) => (
                 <li key={material.id}>
                   <label
@@ -116,7 +116,7 @@ export function MaterialPicker({
                       type="checkbox"
                       checked={selected.has(material.id)}
                       onChange={() => toggle(material.id)}
-                      className="border-input mt-0.5 size-4 shrink-0 rounded border"
+                      className="border-input mt-0.5 size-4 shrink-0 rounded-sm border-2 accent-[var(--brand)]"
                     />
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">

@@ -35,7 +35,7 @@ export function AppHeader({ userName, username }: AppHeaderProps) {
   const breadcrumbs = getBreadcrumbs(pathname);
 
   return (
-    <header className="bg-background sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4">
+    <header className="bg-card sticky top-0 z-30 flex h-16 items-center gap-3 border-b-2 border-border px-4">
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetTrigger
           render={
@@ -72,7 +72,7 @@ export function AppHeader({ userName, username }: AppHeaderProps) {
                   {isLast ? (
                     <span
                       aria-current="page"
-                      className="block truncate font-medium"
+                      className="font-heading block truncate text-sm tracking-tight"
                     >
                       {crumb.label}
                     </span>
@@ -104,7 +104,7 @@ export function AppHeader({ userName, username }: AppHeaderProps) {
         />
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>
-            <span className="block truncate font-medium">{userName}</span>
+            <span className="font-heading block truncate text-sm tracking-tight">{userName}</span>
             <span className="text-muted-foreground block truncate text-xs font-normal">
               @{username}
             </span>

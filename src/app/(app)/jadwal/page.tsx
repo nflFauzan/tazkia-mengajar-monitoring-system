@@ -152,7 +152,7 @@ export default async function JadwalPage({
           action={search ? undefined : <AddScheduleButton options={options} />}
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>

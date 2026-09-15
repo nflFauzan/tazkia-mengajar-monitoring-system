@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GraduationCap } from "lucide-react";
 
+import { TazkiaMark } from "@/components/brand/tazkia-mark";
 import { NAV_ITEMS, isActivePath } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +17,11 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-14 items-center gap-2.5 border-b px-4">
-        <div className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
-          <GraduationCap className="size-4" />
-        </div>
+      <div className="flex h-16 items-center gap-2.5 border-b-2 border-border px-4">
+        <TazkiaMark className="size-9 shrink-0" />
         <div className="min-w-0">
-          <p className="truncate text-sm leading-tight font-semibold">
-            Tazkia Mengajar
+          <p className="font-heading truncate text-sm leading-tight tracking-tight">
+            TAZKIA MENGAJAR
           </p>
           <p className="text-muted-foreground truncate text-xs leading-tight">
             Monitoring System
@@ -44,10 +42,10 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-bold transition-colors",
                     active
-                      ? "bg-secondary text-secondary-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                      ? "border-2 border-border bg-primary text-primary-foreground shadow-[var(--shadow-brutal-sm)]"
+                      : "border-2 border-transparent text-foreground hover:border-border hover:bg-secondary",
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -61,7 +59,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                   find, not easier.
                 */}
                 {active && item.children ? (
-                  <ul className="border-border mt-0.5 ml-[1.4rem] space-y-0.5 border-l pl-3">
+                  <ul className="border-border mt-1 ml-[1.5rem] space-y-0.5 border-l-2 pl-3">
                     {item.children.map((child) => {
                       const childActive = pathname === child.href;
 
@@ -72,7 +70,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                             onClick={onNavigate}
                             aria-current={childActive ? "page" : undefined}
                             className={cn(
-                              "block rounded-md px-3 py-1.5 text-sm transition-colors",
+                              "block rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                               childActive
                                 ? "text-foreground font-medium"
                                 : "text-muted-foreground hover:text-foreground",

@@ -96,7 +96,7 @@ export default async function DashboardPage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section aria-label="Kegiatan terbaru">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Kegiatan Terbaru</h2>
+            <h2 className="font-heading text-lg tracking-tight">Kegiatan Terbaru</h2>
             <ButtonLink href="/kegiatan" variant="ghost" size="sm">
               Lihat semua
             </ButtonLink>
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
               }
             />
           ) : (
-            <ul className="divide-y rounded-lg border">
+            <ul className="divide-y-2 divide-border/15 border-border rounded-lg border-2 shadow-[var(--shadow-brutal)] overflow-hidden">
               {stats.recentActivities.map((activity) => (
                 <li key={activity.id}>
                   <Link
@@ -146,7 +146,7 @@ export default async function DashboardPage() {
 
         <section aria-label="Jadwal mendatang">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold">Jadwal</h2>
+            <h2 className="font-heading text-lg tracking-tight">Jadwal</h2>
             <ButtonLink href="/jadwal" variant="ghost" size="sm">
               Lihat semua
             </ButtonLink>
@@ -159,7 +159,7 @@ export default async function DashboardPage() {
               description="Buat jadwal rutin agar kegiatan lebih mudah direncanakan."
             />
           ) : (
-            <ul className="divide-y rounded-lg border">
+            <ul className="divide-y-2 divide-border/15 border-border rounded-lg border-2 shadow-[var(--shadow-brutal)] overflow-hidden">
               {stats.upcomingSchedules.map((schedule) => (
                 <li key={schedule.id} className="p-3">
                   <p className="truncate text-sm font-medium">

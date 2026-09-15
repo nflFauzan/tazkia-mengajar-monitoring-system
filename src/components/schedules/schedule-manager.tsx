@@ -288,7 +288,7 @@ function ScheduleDialog({
               onChange={(event) =>
                 setForm({ ...form, locationId: event.target.value })
               }
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+              className="border-input bg-card h-9 w-full rounded-md border-2 px-3 text-sm font-medium shadow-[var(--shadow-brutal-sm)]"
             >
               {options.locations.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -455,7 +455,7 @@ function ScheduleDialog({
               onChange={(event) =>
                 setForm({ ...form, isActive: event.target.checked })
               }
-              className="border-input size-4 rounded border"
+              className="border-input size-4 rounded-sm border-2 accent-[var(--brand)]"
             />
             Aktif
           </label>
@@ -516,7 +516,7 @@ function CheckboxGroup({
               type="checkbox"
               checked={selected.includes(option.value)}
               onChange={() => onToggle(option.value)}
-              className="border-input size-4 rounded border"
+              className="border-input size-4 rounded-sm border-2 accent-[var(--brand)]"
             />
             {option.label}
           </label>

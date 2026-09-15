@@ -4,12 +4,26 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+ * Tazkia Mengajar — neobrutalist theme
+ *
+ * The palette is sampled from the @tazkia.mengajar_ Instagram identity:
+ *   #2B76F2  the logo mark's blue
+ *   #1A4A90  the deep navy behind the halftone posters
+ *   #C09048  the warm gold used as an accent on cards and stars
+ *   #F0F0F0  the paper stock of the "Open Donasi" poster
+ *
+ * Neobrutalism means: hard black borders, offset shadows with no blur, flat
+ * fills, heavy type, and controls that physically "press" into the page. The
+ * shadow is a token rather than a utility so every surface stays consistent.
+ * ------------------------------------------------------------------------- */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,92 +53,204 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Brand colours, available as utilities like `bg-brand` and `text-gold`. */
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-gold: var(--gold);
+
+  /* Chunky, deliberate radii — rounded, but never soft. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+  --radius-4xl: 20px;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --brand: #2b76f2;
+  --brand-deep: #1a4a90;
+  --gold: #e0a43c;
+
+  /* Warm paper rather than pure white: it keeps the black borders from
+     vibrating and matches the poster stock in the brand's posts. */
+  --background: #f4f1e8;
+  --foreground: #0a0a0a;
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --primary: #2b76f2;
+  --primary-foreground: #ffffff;
+
+  --secondary: #ffd84d;
+  --secondary-foreground: #0a0a0a;
+
+  --muted: #eceadf;
+  --muted-foreground: #4a4a4a;
+
+  --accent: #e0a43c;
+  --accent-foreground: #0a0a0a;
+
+  --destructive: #e5484d;
+
+  /* Borders are the structure in this style, so they are true black. */
+  --border: #0a0a0a;
+  --input: #0a0a0a;
+  --ring: #2b76f2;
+
+  --chart-1: #2b76f2;
+  --chart-2: #1a4a90;
+  --chart-3: #e0a43c;
+  --chart-4: #ffd84d;
+  --chart-5: #6090d8;
+
+  --radius: 8px;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #2b76f2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffd84d;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #0a0a0a;
+  --sidebar-ring: #2b76f2;
+
+  /* The signature offset shadow. `--shadow-brutal-sm` is for dense controls,
+     the plain one for cards and panels. */
+  --shadow-brutal-sm: 2px 2px 0 0 #0a0a0a;
+  --shadow-brutal: 4px 4px 0 0 #0a0a0a;
+  --shadow-brutal-lg: 6px 6px 0 0 #0a0a0a;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --brand: #5b93f5;
+  --brand-deep: #2b76f2;
+  --gold: #ffd84d;
+
+  --background: #12131a;
+  --foreground: #f7f6f2;
+
+  --card: #1c1e28;
+  --card-foreground: #f7f6f2;
+  --popover: #1c1e28;
+  --popover-foreground: #f7f6f2;
+
+  --primary: #5b93f5;
+  --primary-foreground: #0a0a0a;
+
+  --secondary: #ffd84d;
+  --secondary-foreground: #0a0a0a;
+
+  --muted: #262936;
+  --muted-foreground: #b4b2ab;
+
+  --accent: #e0a43c;
+  --accent-foreground: #0a0a0a;
+
+  --destructive: #ff6369;
+
+  /* In dark mode the offset shadow reads as a light edge, so borders and
+     shadows both flip to near-white rather than disappearing. */
+  --border: #f7f6f2;
+  --input: #f7f6f2;
+  --ring: #5b93f5;
+
+  --chart-1: #5b93f5;
+  --chart-2: #2b76f2;
+  --chart-3: #ffd84d;
+  --chart-4: #e0a43c;
+  --chart-5: #8fb5f7;
+
+  --sidebar: #1c1e28;
+  --sidebar-foreground: #f7f6f2;
+  --sidebar-primary: #5b93f5;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #ffd84d;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #f7f6f2;
+  --sidebar-ring: #5b93f5;
+
+  --shadow-brutal-sm: 2px 2px 0 0 #f7f6f2;
+  --shadow-brutal: 4px 4px 0 0 #f7f6f2;
+  --shadow-brutal-lg: 6px 6px 0 0 #f7f6f2;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    /* The halftone dot field from the brand's posters, at low opacity so it
+       reads as texture rather than pattern. */
+    background-image: radial-gradient(
+      var(--halftone, rgba(10, 10, 10, 0.06)) 1px,
+      transparent 1px
+    );
+    background-size: 14px 14px;
   }
+
+  .dark body {
+    --halftone: rgba(247, 246, 242, 0.05);
+  }
+
   html {
     @apply font-sans;
+  }
+
+  /* Headings carry the display face and tighten up, which is what makes the
+     type feel stacked and poster-like rather than merely bold. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading), var(--font-sans), sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Focus must stay obvious against heavy borders, so it is an offset ring
+     rather than a subtle glow. */
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* The three primitives every surface in the app is built from. */
+  .brutal-border {
+    border: 2px solid var(--border);
+  }
+
+  .brutal-card {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--card);
+    box-shadow: var(--shadow-brutal);
+  }
+
+  /* Controls press into the page: the element shifts by exactly the shadow
+     offset while the shadow collapses, so the motion reads as physical
+     rather than decorative. */
+  .brutal-press {
+    transition:
+      transform 80ms ease-out,
+      box-shadow 80ms ease-out;
+  }
+
+  .brutal-press:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brutal-press {
+      transition: none;
+    }
   }
 }

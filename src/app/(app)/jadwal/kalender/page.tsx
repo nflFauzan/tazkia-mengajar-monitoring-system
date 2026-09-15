@@ -174,11 +174,11 @@ export default async function KalenderPage({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="grid min-w-3xl grid-cols-7 gap-px rounded-lg border bg-border">
+        <div className="border-border grid min-w-3xl grid-cols-7 gap-0.5 overflow-hidden rounded-lg border-2 bg-border shadow-[var(--shadow-brutal)]">
           {DAY_NAMES.map((day) => (
             <div
               key={day}
-              className="bg-muted/50 px-2 py-1.5 text-center text-xs font-medium"
+              className="bg-secondary text-secondary-foreground px-2 py-2 text-center text-xs font-bold uppercase tracking-wide"
             >
               {day}
             </div>
@@ -194,14 +194,14 @@ export default async function KalenderPage({
               <div
                 key={key}
                 className={cn(
-                  "bg-background min-h-24 p-1.5",
-                  !inMonth && "bg-muted/30",
+                  "min-h-24 p-1.5",
+                  inMonth ? "bg-card" : "bg-muted",
                 )}
               >
                 <span
                   className={cn(
                     "inline-flex size-6 items-center justify-center rounded-full text-xs",
-                    key === todayKey && "bg-primary text-primary-foreground",
+                    key === todayKey && "bg-primary text-primary-foreground border-border border-2 font-bold",
                     !inMonth && "text-muted-foreground",
                   )}
                 >
@@ -220,7 +220,7 @@ export default async function KalenderPage({
                       href={`/kegiatan/${activity.id}`}
                       title={`${activity.location.name} — ${activity.startTime}`}
                       className={cn(
-                        "block truncate rounded px-1.5 py-0.5 text-xs",
+                        "border-border block truncate rounded-sm border px-1.5 py-0.5 text-xs font-bold",
                         activity.status === "COMPLETED" &&
                           "bg-green-600/15 text-green-800 dark:text-green-300",
                         activity.status === "DRAFT" &&
@@ -237,7 +237,7 @@ export default async function KalenderPage({
                     <span
                       key={`${occurrence.scheduleId}-${key}`}
                       title={`${occurrence.title} — ${occurrence.locationName}`}
-                      className="text-muted-foreground block truncate rounded border border-dashed px-1.5 py-0.5 text-xs"
+                      className="text-foreground border-border block truncate rounded-sm border border-dashed px-1.5 py-0.5 text-xs font-medium"
                     >
                       {occurrence.startTime} {occurrence.title}
                     </span>

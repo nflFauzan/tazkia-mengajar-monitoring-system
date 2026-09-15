@@ -51,7 +51,7 @@ export function ActivityFilters({
   ].some((key) => searchParams.get(key));
 
   return (
-    <div className="mb-4 grid gap-3 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="bg-card border-border mb-4 grid gap-3 rounded-lg border-2 p-3 shadow-[var(--shadow-brutal-sm)] sm:grid-cols-2 lg:grid-cols-5">
       <FilterField label="Dari tanggal" id="from">
         <Input
           id="from"
@@ -157,7 +157,7 @@ function Select({
       id={id}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+      className="border-input bg-card h-9 w-full rounded-md border-2 px-3 text-sm font-medium shadow-[var(--shadow-brutal-sm)]"
     >
       <option value="">{placeholder}</option>
       {options.map((option) => (

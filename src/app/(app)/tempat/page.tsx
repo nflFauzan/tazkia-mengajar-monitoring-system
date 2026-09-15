@@ -94,7 +94,7 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
           action={search ? undefined : <AddLocationButton />}
         />
       ) : (
-        <div className="rounded-lg border">
+        <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
               <TableRow>

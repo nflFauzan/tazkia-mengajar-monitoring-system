@@ -129,7 +129,7 @@ export default async function ActivityDetailPage({
         completed={completed}
       />
 
-      <div className="rounded-lg border p-4 md:p-6">
+      <div className="bg-card border-border rounded-lg border-2 p-4 shadow-[var(--shadow-brutal)] md:p-6">
         {step === "informasi" ? (
           <div className="max-w-2xl">
             <ActivityInfoForm
