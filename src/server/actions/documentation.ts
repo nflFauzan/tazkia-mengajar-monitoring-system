@@ -17,7 +17,7 @@ export async function deleteDocumentationAction(
   try {
     const doc = await prisma.documentation.findUnique({
       where: { id },
-      select: { id: true, activityId: true, storageKey: true, url: true },
+      select: { id: true, activityId: true, storageKey: true },
     });
 
     if (!doc) return fail("Dokumentasi tidak ditemukan.");
@@ -28,7 +28,7 @@ export async function deleteDocumentationAction(
     await prisma.documentation.delete({ where: { id } });
 
     try {
-      await deleteFile(doc.storageKey, doc.url);
+      await deleteFile(doc.storageKey);
     } catch (error) {
       console.error("[deleteDocumentationAction] orphaned blob", error);
     }

@@ -3,15 +3,15 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
-import { isUsingLocalStorage } from "@/lib/storage";
+import { createSignedFileUrl, isUsingLocalStorage } from "@/lib/storage";
 
 /**
- * Serves files written by the development disk fallback in lib/storage.
+ * Serves documentation files behind the session check.
  *
- * Only active when no Blob token is configured; in production the files live in
- * Vercel Blob and are served from its own URL, so this route refuses to do
- * anything. That keeps it from becoming an accidental file-read endpoint on a
- * deployed instance.
+ * Blobs are stored privately, so there is no public URL to link to: this route
+ * redirects to a short-lived signed URL instead. In development it reads the
+ * same files from the disk fallback, which keeps a single URL shape in the
+ * database across both modes.
  */
 export const runtime = "nodejs";
 
@@ -33,16 +33,31 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ path: string[] }> },
 ) {
-  if (!isUsingLocalStorage()) {
-    return new NextResponse(null, { status: 404 });
-  }
-
   const user = await getCurrentUser();
   if (!user) {
     return new NextResponse(null, { status: 401 });
   }
 
   const { path: segments } = await context.params;
+
+  if (!isUsingLocalStorage()) {
+    try {
+      const signedUrl = await createSignedFileUrl(segments.join("/"));
+
+      return new NextResponse(null, {
+        status: 307,
+        headers: {
+          Location: signedUrl,
+          // Well under the signed URL's lifetime, so a cached redirect can
+          // never outlive the URL it points at.
+          "Cache-Control": "private, max-age=600",
+        },
+      });
+    } catch (error) {
+      console.error("[uploads]", error);
+      return new NextResponse(null, { status: 404 });
+    }
+  }
 
   // Resolve first, then confirm the result is still inside the upload folder.
   // A segment like ".." would otherwise escape it.
