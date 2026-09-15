@@ -67,17 +67,28 @@ vercel env add AUTH_SECRET production
 
 Set them for **Production** (and Preview, if you use preview deployments).
 
-## 5. Run migrations against production
+## 5. Migrations
 
-Migrations are applied explicitly rather than during the build, so a failed
-migration cannot leave a half-deployed release:
+`vercel.json` sets the build command to:
+
+```
+prisma migrate deploy && next build
+```
+
+so pending migrations apply automatically on every deploy. `migrate deploy`
+never prompts and never resets data.
+
+Running them in the build is deliberate. A schema change would otherwise need a
+separate manual step that is easy to forget, and the failure mode here is the
+safe one: if a migration fails the build fails, so code never ships against a
+schema that did not apply.
+
+To apply migrations by hand instead — useful when inspecting a risky change
+before it ships — point the direct URL at Neon and run:
 
 ```bash
 DATABASE_URL="<neon direct url>" DIRECT_URL="<neon direct url>" npm run db:deploy
 ```
-
-`db:deploy` runs `prisma migrate deploy`, which applies pending migrations
-without prompting and never resets data.
 
 ## 6. Create the first admin
 
@@ -160,9 +171,9 @@ Walk the full workflow against the deployed URL:
 **Runtimes.** Routes touching Prisma, sharp or Blob run on the Node.js runtime.
 Only `src/proxy.ts` runs on Edge, and it does nothing but verify a JWT.
 
-**Migrations on future deploys.** Run `npm run db:deploy` against the direct URL
-before promoting a release that changes the schema. Prefer additive migrations
-so the previous version keeps working during the rollover.
+**Migrations on future deploys.** These run automatically as part of the build
+(see step 5). Prefer additive migrations so the previous version keeps working
+during the rollover, since old and new code briefly serve at the same time.
 
 **Rotating `AUTH_SECRET`.** Changing it invalidates every session and signs
 everybody out. That is the correct response to a suspected leak.
