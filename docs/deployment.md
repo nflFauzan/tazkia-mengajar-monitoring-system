@@ -30,7 +30,11 @@ connections.
 ## 2. Create the Blob store
 
 In the Vercel dashboard: **Storage → Create → Blob**, then connect it to the
-project. Connecting sets `BLOB_READ_WRITE_TOKEN` on the project automatically.
+project. Connecting the store only adds `BLOB_STORE_ID` and
+`BLOB_WEBHOOK_PUBLIC_KEY` to the project — it does **not** add
+`BLOB_READ_WRITE_TOKEN`. Create a read-write token from the store's own page
+and add it manually as an environment variable in step 4, or uploads will
+fail in production with `BLOB_READ_WRITE_TOKEN is not set`.
 
 ## 3. Create the Vercel project
 
@@ -49,7 +53,7 @@ vercel link
 | `DATABASE_URL` | Neon **pooled** connection string |
 | `DIRECT_URL` | Neon **direct** connection string |
 | `AUTH_SECRET` | A fresh 32+ character secret, different from development |
-| `BLOB_READ_WRITE_TOKEN` | Set automatically when the Blob store is connected |
+| `BLOB_READ_WRITE_TOKEN` | Read-write token from the Blob store's page — not set automatically, see step 2 |
 
 Generate the auth secret:
 

@@ -24,7 +24,7 @@ export interface StoredFile {
 
 const DEV_UPLOAD_DIR = path.join(process.cwd(), ".uploads");
 
-function hasBlobToken(): boolean {
+export function hasBlobToken(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 

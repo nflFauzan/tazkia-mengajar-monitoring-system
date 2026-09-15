@@ -17,7 +17,7 @@ import {
 import { requireUser } from "@/lib/auth/session";
 import { formatTanggalSingkat } from "@/lib/dates";
 import { prisma } from "@/lib/db/prisma";
-import { isUsingLocalStorage } from "@/lib/storage";
+import { hasBlobToken, isUsingLocalStorage } from "@/lib/storage";
 
 export const metadata: Metadata = { title: "Pengaturan" };
 
@@ -36,6 +36,10 @@ export default async function PengaturanPage() {
   });
 
   const usingLocalStorage = isUsingLocalStorage();
+  // Local storage already implies the token is missing (dev-only fallback);
+  // this also catches the token being missing in production, where the app
+  // still reports "Vercel Blob" because it refuses to fall back to disk.
+  const blobTokenMissing = !hasBlobToken();
 
   return (
     <>
@@ -117,6 +121,10 @@ export default async function PengaturanPage() {
                     (mode pengembangan)
                   </span>
                 </>
+              ) : blobTokenMissing ? (
+                <span className="text-destructive">
+                  Vercel Blob (token belum diatur)
+                </span>
               ) : (
                 "Vercel Blob"
               )}
@@ -143,6 +151,12 @@ export default async function PengaturanPage() {
             Dokumentasi saat ini disimpan di folder lokal karena
             BLOB_READ_WRITE_TOKEN belum diatur. Di produksi, token wajib diisi
             agar berkas tersimpan permanen di Vercel Blob.
+          </p>
+        ) : blobTokenMissing ? (
+          <p className="text-destructive mt-3 text-sm">
+            BLOB_READ_WRITE_TOKEN belum diatur di production. Unggah
+            dokumentasi akan gagal sampai token ditambahkan di Environment
+            Variables project dan project di-redeploy.
           </p>
         ) : null}
       </section>
