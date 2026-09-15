@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { del, put } from "@vercel/blob";
+import { del, issueSignedToken, presignUrl, put } from "@vercel/blob";
 
 /**
  * Object storage for documentation files.
@@ -13,12 +13,20 @@ import { del, put } from "@vercel/blob";
  * The fallback is development-only on purpose. Vercel's filesystem is
  * ephemeral, so silently using it in production would lose every upload on the
  * next deploy; `assertStorageConfigured` makes that a startup error instead.
+ *
+ * Blobs are stored with private access: documentation contains photos of
+ * children, which must not be readable by anyone holding a guessed URL. Both
+ * storage modes therefore hand out an app URL served by /api/uploads, which
+ * checks the session before streaming the file or redirecting to a signed one.
  */
 
+/** Signed URLs are short-lived; the browser re-requests through /api/uploads. */
+const SIGNED_URL_TTL_MS = 60 * 60 * 1000;
+
 export interface StoredFile {
-  /** Storage pathname, used later to delete the object. */
+  /** Storage pathname, used later to sign and delete the object. */
   key: string;
-  /** Public URL the browser loads the file from. */
+  /** App URL the browser loads the file from, always behind authentication. */
   url: string;
 }
 
@@ -65,23 +73,44 @@ export async function putFile(
   }
 
   const blob = await put(pathname, body, {
-    access: "public",
+    access: "private",
     contentType,
     // Vercel Blob appends a random suffix by default, which prevents one upload
     // from overwriting another that happens to share a filename.
     addRandomSuffix: true,
   });
 
-  return { key: blob.pathname, url: blob.url };
+  // The suffix makes the stored pathname differ from the requested one, so the
+  // key and the URL both come from the result rather than the input.
+  return { key: blob.pathname, url: `/api/uploads/${blob.pathname}` };
 }
 
-export async function deleteFile(key: string, url: string): Promise<void> {
+/**
+ * Builds a temporary direct URL for a private blob, so the browser fetches the
+ * bytes from Blob storage instead of streaming them through a function.
+ */
+export async function createSignedFileUrl(key: string): Promise<string> {
+  const signedToken = await issueSignedToken({
+    pathname: key,
+    operations: ["get"],
+    validUntil: Date.now() + SIGNED_URL_TTL_MS,
+  });
+
+  const { presignedUrl } = await presignUrl(signedToken, {
+    operation: "get",
+    pathname: key,
+    access: "private",
+  });
+
+  return presignedUrl;
+}
+
+export async function deleteFile(key: string): Promise<void> {
   if (isUsingLocalStorage()) {
     const target = path.join(DEV_UPLOAD_DIR, key);
     await fs.rm(target, { force: true });
     return;
   }
 
-  // Blob deletes by URL, not pathname.
-  await del(url);
+  await del(key);
 }
