@@ -34,6 +34,13 @@ export interface DashboardStats {
     startTime: string;
     endTime: string;
   }>;
+  topActiveMembers: Array<{
+    id: string;
+    fullName: string;
+    status: string | null;
+    hadirCount: number;
+    lastActive: Date | null;
+  }>;
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -50,7 +57,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     presentCount,
     recentRows,
     upcomingRows,
-  ] = await prisma.$transaction([
+    activeTeamRows,
+  ] = await Promise.all([
     // Cancelled activities are excluded below: they record that something did
     // not happen, so counting them would overstate the work done.
     prisma.activity.count({ where: { status: { not: "CANCELLED" } } }),
@@ -111,6 +119,25 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         location: { select: { name: true } },
       },
     }),
+
+    prisma.teamMember.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        fullName: true,
+        status: true,
+        activityAttendances: {
+          where: {
+            attendance: "HADIR",
+            activity: { status: { not: "CANCELLED" } },
+          },
+          select: {
+            activity: { select: { date: true } },
+          },
+          orderBy: { activity: { date: "desc" } },
+        },
+      },
+    }),
   ]);
 
   return {
@@ -142,5 +169,15 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       startTime: row.startTime,
       endTime: row.endTime,
     })),
+    topActiveMembers: activeTeamRows
+      .map((m) => ({
+        id: m.id,
+        fullName: m.fullName,
+        status: m.status,
+        hadirCount: m.activityAttendances.length,
+        lastActive: m.activityAttendances[0]?.activity.date ?? null,
+      }))
+      .sort((a, b) => b.hadirCount - a.hadirCount)
+      .slice(0, 5),
   };
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import {
   curriculumMaterialSchema,
@@ -30,7 +30,7 @@ export async function createCurriculumAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   const parsed = curriculumSchema.safeParse({
     name: formData.get("name"),
@@ -56,7 +56,7 @@ export async function updateCurriculumAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return fail("Kurikulum tidak ditemukan.");
@@ -84,7 +84,7 @@ export async function updateCurriculumAction(
 export async function deleteCurriculumAction(
   id: string,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   try {
     // Deleting a curriculum cascades to its periods and materials, so the real
@@ -118,7 +118,7 @@ export async function createPeriodAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   const parsed = curriculumPeriodSchema.safeParse({
     curriculumId: formData.get("curriculumId"),
@@ -151,7 +151,7 @@ export async function createPeriodAction(
 }
 
 export async function deletePeriodAction(id: string): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   try {
     const usedCount = await prisma.activityMaterial.count({
@@ -196,7 +196,7 @@ export async function createMaterialAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   const parsed = parseMaterialForm(formData);
   if (!parsed.success) return fromZodError(parsed.error);
@@ -218,7 +218,7 @@ export async function updateMaterialAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return fail("Materi tidak ditemukan.");
@@ -243,7 +243,7 @@ export async function updateMaterialAction(
 }
 
 export async function deleteMaterialAction(id: string): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   try {
     const usedCount = await prisma.activityMaterial.count({

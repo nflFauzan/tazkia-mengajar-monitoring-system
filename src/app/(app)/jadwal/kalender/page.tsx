@@ -58,7 +58,7 @@ export default async function KalenderPage({
   const gridEnd = new Date(grid[grid.length - 1]);
   gridEnd.setUTCDate(gridEnd.getUTCDate() + 1);
 
-  const [schedules, activities] = await prisma.$transaction([
+  const [schedules, activities] = await Promise.all([
     prisma.schedule.findMany({
       where: {
         isActive: true,

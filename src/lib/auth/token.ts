@@ -17,7 +17,9 @@ export interface SessionUser {
   id: string;
   username: string;
   name: string;
-  role: "ADMIN";
+  role: "ADMIN" | "PENGAJAR" | "PEMBIMBING";
+  mustChangePassword: boolean;
+  teamMemberId?: string | null;
 }
 
 /**
@@ -42,6 +44,8 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     username: user.username,
     name: user.name,
     role: user.role,
+    mustChangePassword: user.mustChangePassword,
+    teamMemberId: user.teamMemberId ?? null,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
@@ -69,7 +73,9 @@ export async function verifySessionToken(
       typeof payload.sub !== "string" ||
       typeof payload.username !== "string" ||
       typeof payload.name !== "string" ||
-      payload.role !== "ADMIN"
+      (payload.role !== "ADMIN" &&
+        payload.role !== "PENGAJAR" &&
+        payload.role !== "PEMBIMBING")
     ) {
       return null;
     }
@@ -78,7 +84,10 @@ export async function verifySessionToken(
       id: payload.sub,
       username: payload.username,
       name: payload.name,
-      role: "ADMIN",
+      role: payload.role as "ADMIN" | "PENGAJAR" | "PEMBIMBING",
+      mustChangePassword: Boolean(payload.mustChangePassword),
+      teamMemberId:
+        typeof payload.teamMemberId === "string" ? payload.teamMemberId : null,
     };
   } catch {
     return null;

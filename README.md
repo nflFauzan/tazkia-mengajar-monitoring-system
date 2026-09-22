@@ -1,12 +1,31 @@
 # Tazkia Mengajar Monitoring System
 
-Internal web application for recording, monitoring and reporting Tazkia Mengajar
-teaching activities. One admin role; the central object is the **Activity**
-(Kegiatan), which ties together a location, a team and their attendance,
-students and their attendance, curriculum material, documentation, and the
-generated WhatsApp-ready report.
+Internal web application for recording, monitoring, and reporting Tazkia Mengajar
+teaching activities. Built with a multi-role architecture (**Admin**, **Pengajar / Relawan**,
+and **Pembimbing**). The central object is the **Activity** (Kegiatan), which ties together
+locations, teaching teams, students, attendance, curriculum materials, photo documentation,
+and auto-generated WhatsApp-ready reports.
 
 The guiding principle is **input once → structured data → reuse everywhere**.
+
+## Key Features
+
+- **Multi-Role System & Dedicated Dashboards**:
+  - **Admin**: Full administrative control, schedule configuration, team management, appeal verification, and report exports.
+  - **Pengajar**: Field-ready workflow with self-attendance, team-synchronized student attendance, session documentation, and progress evaluation.
+  - **Pembimbing**: Scoped team monitoring and mentorship.
+- **Pengajar Self-Attendance & Auto-ALPA**:
+  - Same-day check-in ("Hadir Sekarang") with automated timestamping.
+  - 5-hour advance cutoff rule for leave/sick submissions.
+  - Automatic **ALPA** for unrecorded assigned sessions with an in-app **Banding (Appeal)** workflow verified by Admin.
+- **Student Attendance & Curriculum Progress**:
+  - Location-isolated student attendance with automatic real-time peer synchronization among team members at the same site.
+  - **Folder-Style Student Explorer**: Navigable by Location $\rightarrow$ Learning Group $\rightarrow$ Student list.
+  - **Curriculum-Linked Assessments**: Record student mastery (*Tuntas*, *Lancar*, *Cukup*, *Perlu Bimbingan*) and track progress percentage.
+  - **Excel Export**: Download complete student achievement recaps (`.xlsx`) directly for reporting.
+- **SOP & Onboarding**:
+  - Integrated **Panduan & SOP** page (`/panduan`) detailing field workflows, rules, and emergency contacts.
+  - Automatic interactive onboarding guide tour for first-time login volunteers.
 
 ## Requirements
 
@@ -108,11 +127,13 @@ npm run dev          # http://localhost:3000
 npm test
 ```
 
-40 tests covering the logic that would quietly corrupt records if it regressed:
-report template rendering (including the exact WhatsApp formatting and line
-breaks), narrative generation and ownership, the required-data checklist,
-attendance tallies, the beneficiary-count consistency rule, and schedule
-recurrence expansion. They are pure functions, so the suite needs no database.
+56 unit tests covering critical domain logic and safety boundaries:
+- **Reporting & Narrative**: Template rendering, WhatsApp text formatting, and checklist validation.
+- **Attendance & Rules**: Tally calculations, 5-hour cutoff rule for volunteer leave, and beneficiary-count consistency.
+- **Appeals & Assessments**: Attendance appeal status validation, student curriculum assessment grading, and progress aggregation.
+- **Auth & Schedules**: Volunteer credentials generation, JWT token lifecycle, and recurrence schedule expansion.
+
+All tests run as pure functions or mocked services, executing in < 5 seconds without database dependencies.
 
 ## Build
 
@@ -146,18 +167,18 @@ ExcelJS · date-fns · Vitest
 ```text
 src/
 ├── app/
-│   ├── (auth)/login/        public login
-│   ├── (app)/               authenticated pages behind the shell
-│   └── api/                 upload, local upload serving, Excel export
+│   ├── (auth)/              login & first-time password update
+│   ├── (app)/               authenticated pages (dashboard, absensi, kegiatan, jadwal, murid, kurikulum, tempat, tim, panduan, pengaturan)
+│   └── api/                 upload, local upload serving, Excel exports (laporan & capaian)
 ├── components/
-│   ├── ui/                  shadcn primitives
-│   ├── common/              shared page furniture, dialogs, table toolbar
-│   ├── layout/              sidebar, header
-│   └── <domain>/            activities, schedules, students, team, ...
-├── lib/                     auth, db, storage, validation, reports, dates
+│   ├── ui/                  shadcn primitives (Base UI)
+│   ├── common/              shared page shell, dialogs, button links, onboarding tour
+│   ├── layout/              sidebar, header, breadcrumbs
+│   └── <domain>/            attendance, activities, curriculum, students, team, ...
+├── lib/                     auth, db, storage, validation, reports, dates, navigation
 ├── server/
-│   ├── actions/             mutations (Zod-validated, session-checked)
-│   └── services/            business logic, unit-tested
+│   ├── actions/             mutations (Zod-validated, session-checked Server Actions)
+│   └── services/            business logic, analytics, exports, unit-tested
 └── proxy.ts                 route gate (Next 16's renamed middleware)
 ```
 

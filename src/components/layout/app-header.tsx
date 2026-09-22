@@ -7,9 +7,11 @@ import { ChevronRight, LogOut, Menu, User } from "lucide-react";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -27,12 +29,19 @@ import { logoutAction } from "@/server/actions/auth";
 interface AppHeaderProps {
   userName: string;
   username: string;
+  role?: "ADMIN" | "PENGAJAR" | "PEMBIMBING";
+  locations?: Array<{ id: string; name: string }>;
 }
 
-export function AppHeader({ userName, username }: AppHeaderProps) {
+export function AppHeader({
+  userName,
+  username,
+  role = "ADMIN",
+  locations,
+}: AppHeaderProps) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const breadcrumbs = getBreadcrumbs(pathname);
+  const breadcrumbs = getBreadcrumbs(pathname, role);
 
   return (
     <header className="bg-card sticky top-0 z-30 flex h-16 items-center gap-3 border-b-2 border-border px-4">
@@ -51,7 +60,11 @@ export function AppHeader({ userName, username }: AppHeaderProps) {
         />
         <SheetContent side="left" className="w-72 p-0">
           <SheetTitle className="sr-only">Navigasi</SheetTitle>
-          <AppSidebar onNavigate={() => setDrawerOpen(false)} />
+          <AppSidebar
+            role={role}
+            locations={locations}
+            onNavigate={() => setDrawerOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 
@@ -103,12 +116,24 @@ export function AppHeader({ userName, username }: AppHeaderProps) {
           }
         />
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <span className="font-heading block truncate text-sm tracking-tight">{userName}</span>
-            <span className="text-muted-foreground block truncate text-xs font-normal">
-              @{username}
-            </span>
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-heading block truncate text-sm tracking-tight">
+                  {userName}
+                </span>
+                <Badge
+                  variant={role === "ADMIN" ? "default" : "secondary"}
+                  className="text-[10px] px-1.5 py-0 uppercase font-bold"
+                >
+                  {role}
+                </Badge>
+              </div>
+              <span className="text-muted-foreground block truncate text-xs font-normal">
+                @{username}
+              </span>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           {/*
             Logout is a form post rather than an onClick handler so it still
@@ -117,6 +142,7 @@ export function AppHeader({ userName, username }: AppHeaderProps) {
           */}
           <form action={logoutAction}>
             <DropdownMenuItem
+              nativeButton
               render={
                 <button type="submit" className="w-full">
                   <LogOut className="size-4" />

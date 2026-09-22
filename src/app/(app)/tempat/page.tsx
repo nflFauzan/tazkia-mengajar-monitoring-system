@@ -27,7 +27,8 @@ import {
 export const metadata: Metadata = { title: "Tempat" };
 
 export default async function TempatPage({ searchParams }: PageProps<"/tempat">) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
 
   const params = await searchParams;
   const { page, skip, take } = parsePageParam(
@@ -49,7 +50,7 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
       }
     : {};
 
-  const [locations, total] = await prisma.$transaction([
+  const [locations, total] = await Promise.all([
     prisma.location.findMany({
       where,
       orderBy: [{ isActive: "desc" }, { name: "asc" }],
@@ -75,7 +76,7 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
       <PageHeader
         title="Tempat"
         description="Lokasi kegiatan yang dipakai ulang untuk jadwal dan kegiatan."
-        actions={<AddLocationButton />}
+        actions={isAdmin ? <AddLocationButton /> : null}
       />
 
       <div className="mb-4">
@@ -89,9 +90,9 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
           description={
             search
               ? `Tidak ada tempat yang cocok dengan "${search}".`
-              : "Tambahkan tempat pertama agar bisa dipakai pada jadwal dan kegiatan."
+              : "Daftar tempat belum tersedia."
           }
-          action={search ? undefined : <AddLocationButton />}
+          action={isAdmin && !search ? <AddLocationButton /> : undefined}
         />
       ) : (
         <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
@@ -103,7 +104,7 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
                 <TableHead className="hidden md:table-cell">Kategori</TableHead>
                 <TableHead className="hidden lg:table-cell">Alamat</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-20 text-right">Aksi</TableHead>
+                {isAdmin ? <TableHead className="w-20 text-right">Aksi</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -124,9 +125,11 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
                       <Badge variant="secondary">Arsip</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <LocationRowActions location={location} />
-                  </TableCell>
+                  {isAdmin ? (
+                    <TableCell className="text-right">
+                      <LocationRowActions location={location} />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>

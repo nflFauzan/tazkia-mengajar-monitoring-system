@@ -1,19 +1,27 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { TazkiaMark } from "@/components/brand/tazkia-mark";
-import { NAV_ITEMS, isActivePath } from "@/lib/navigation";
+import { getNavItemsForRole, isActivePath } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 interface AppSidebarProps {
+  role?: "ADMIN" | "PENGAJAR" | "PEMBIMBING";
+  locations?: Array<{ id: string; name: string }>;
   /** Called after any navigation, so the mobile drawer can close itself. */
   onNavigate?: () => void;
 }
 
-export function AppSidebar({ onNavigate }: AppSidebarProps) {
+export function AppSidebar({
+  role = "ADMIN",
+  locations,
+  onNavigate,
+}: AppSidebarProps) {
   const pathname = usePathname();
+  const navItems = getNavItemsForRole(role);
 
   return (
     <div className="flex h-full flex-col">
@@ -31,9 +39,10 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
       <nav className="flex-1 overflow-y-auto p-3" aria-label="Navigasi utama">
         <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const active = isActivePath(pathname, item.href);
             const Icon = item.icon;
+            const isMurid = item.href === "/murid";
 
             return (
               <li key={item.href}>
@@ -45,19 +54,24 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                     "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-bold transition-colors",
                     active
                       ? "border-2 border-border bg-primary text-primary-foreground shadow-[var(--shadow-brutal-sm)]"
-                      : "border-2 border-transparent text-foreground hover:border-border hover:bg-secondary",
+                      : "border-2 border-transparent text-foreground hover:border-border hover:bg-muted",
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
                   {item.label}
                 </Link>
 
-                {/*
-                  Sub-pages appear only for the section being viewed. Showing
-                  every child at once turns a nine-item sidebar into a
-                  seventeen-item wall and makes the current location harder to
-                  find, not easier.
-                */}
+                {/* Sub-menu Murid: langsung muncul ketika aktif */}
+                {active && isMurid ? (
+                  <Suspense fallback={null}>
+                    <MuridLocationSubMenu
+                      locations={locations}
+                      onNavigate={onNavigate}
+                    />
+                  </Suspense>
+                ) : null}
+
+                {/* Sub-pages umum lainnya (Kegiatan, Jadwal, Laporan) */}
                 {active && item.children ? (
                   <ul className="border-border mt-1 ml-[1.5rem] space-y-0.5 border-l-2 pl-3">
                     {item.children.map((child) => {
@@ -89,5 +103,55 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         </ul>
       </nav>
     </div>
+  );
+}
+
+function MuridLocationSubMenu({
+  locations,
+  onNavigate,
+}: {
+  locations?: Array<{ id: string; name: string }>;
+  onNavigate?: () => void;
+}) {
+  const searchParams = useSearchParams();
+  const currentTempatId = searchParams.get("tempatId");
+
+  return (
+    <ul className="border-border mt-1 ml-[1.5rem] space-y-0.5 border-l-2 pl-3">
+      <li>
+        <Link
+          href="/murid"
+          onClick={onNavigate}
+          className={cn(
+            "block rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+            !currentTempatId
+              ? "bg-primary/10 text-primary font-bold"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+          )}
+        >
+          Semua Tempat
+        </Link>
+      </li>
+      {locations?.map((loc) => {
+        const isLocActive = currentTempatId === loc.id;
+
+        return (
+          <li key={loc.id}>
+            <Link
+              href={`/murid?tempatId=${loc.id}`}
+              onClick={onNavigate}
+              className={cn(
+                "block truncate rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                isLocActive
+                  ? "bg-primary/10 text-primary font-bold"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
+              {loc.name}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

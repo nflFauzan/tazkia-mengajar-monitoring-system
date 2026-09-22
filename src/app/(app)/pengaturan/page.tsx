@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/common/page-shell";
 import {
   AddAdminButton,
+  AddPengajarButton,
+  PengajarRowActions,
   UserRowActions,
 } from "@/components/settings/user-manager";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { formatTanggalSingkat } from "@/lib/dates";
 import { prisma } from "@/lib/db/prisma";
 import { hasBlobToken, isUsingLocalStorage } from "@/lib/storage";
@@ -22,18 +24,50 @@ import { hasBlobToken, isUsingLocalStorage } from "@/lib/storage";
 export const metadata: Metadata = { title: "Pengaturan" };
 
 export default async function PengaturanPage() {
-  const currentUser = await requireUser();
+  const currentUser = await requireAdmin();
 
-  const users = await prisma.user.findMany({
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      isActive: true,
-      createdAt: true,
-    },
-  });
+  const [admins, pengajars, availableTeamMembers] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "ADMIN" },
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        isActive: true,
+        createdAt: true,
+      },
+    }),
+    prisma.user.findMany({
+      where: { role: "PENGAJAR" },
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+        teamMember: {
+          select: {
+            fullName: true,
+            status: true,
+            phone: true,
+          },
+        },
+      },
+    }),
+    prisma.teamMember.findMany({
+      where: { isActive: true, user: null },
+      orderBy: { fullName: "asc" },
+      select: {
+        id: true,
+        fullName: true,
+        nickname: true,
+        status: true,
+      },
+    }),
+  ]);
 
   const usingLocalStorage = isUsingLocalStorage();
   // Local storage already implies the token is missing (dev-only fallback);
@@ -45,12 +79,24 @@ export default async function PengaturanPage() {
     <>
       <PageHeader
         title="Pengaturan"
-        description="Akun admin dan informasi sistem."
-        actions={<AddAdminButton />}
+        description="Akun admin, akun pengajar, dan informasi sistem."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <AddAdminButton />
+            <AddPengajarButton teamMembers={availableTeamMembers} />
+          </div>
+        }
       />
 
       <section className="mb-8">
-        <h2 className="font-heading mb-3 text-lg tracking-tight">Admin</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-heading text-lg tracking-tight">Admin</h2>
+            <p className="text-muted-foreground text-xs">
+              Pengguna dengan akses penuh ke seluruh data dan sistem.
+            </p>
+          </div>
+        </div>
         <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
           <Table>
             <TableHeader>
@@ -65,7 +111,7 @@ export default async function PengaturanPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {admins.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     {user.name}
@@ -104,6 +150,94 @@ export default async function PengaturanPage() {
             </TableBody>
           </Table>
         </div>
+      </section>
+
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-heading text-lg tracking-tight">
+              Akun Pengajar
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Akun personil tim untuk absensi mandiri real-time dan melihat
+              kurikulum.
+            </p>
+          </div>
+        </div>
+        {pengajars.length === 0 ? (
+          <div className="border-border rounded-lg border-2 border-dashed p-6 text-center shadow-[var(--shadow-brutal-sm)]">
+            <p className="text-sm font-medium">Belum ada akun pengajar.</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {availableTeamMembers.length > 0
+                ? "Gunakan tombol 'Tambah Akun Pengajar' di atas untuk membuat akun bagi anggota tim."
+                : "Semua anggota tim sudah memiliki akun pengguna, atau belum ada anggota tim terdaftar."}
+            </p>
+          </div>
+        ) : (
+          <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama Pengajar</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Peran Personil
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Status Password
+                  </TableHead>
+                  <TableHead>Status Akun</TableHead>
+                  <TableHead className="w-24 text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pengajars.map((pengajar) => (
+                  <TableRow key={pengajar.id}>
+                    <TableCell className="font-medium">
+                      {pengajar.name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      @{pengajar.username}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">
+                      {pengajar.teamMember?.status ?? "Pengajar"}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {pengajar.mustChangePassword ? (
+                        <Badge
+                          variant="secondary"
+                          className="bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                        >
+                          Wajib ganti
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Sudah diganti</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {pengajar.isActive ? (
+                        <Badge variant="outline">Aktif</Badge>
+                      ) : (
+                        <Badge variant="secondary">Nonaktif</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <PengajarRowActions
+                        pengajar={{
+                          id: pengajar.id,
+                          username: pengajar.username,
+                          name: pengajar.name,
+                          isActive: pengajar.isActive,
+                          mustChangePassword: pengajar.mustChangePassword,
+                        }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </section>
 
       <section>

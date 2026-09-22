@@ -56,7 +56,15 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.id },
-    select: { id: true, username: true, name: true, role: true, isActive: true },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      role: true,
+      isActive: true,
+      mustChangePassword: true,
+      teamMemberId: true,
+    },
   });
 
   if (!user || !user.isActive) return null;
@@ -68,7 +76,23 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     username: user.username,
     name: user.name,
     role: user.role,
+    mustChangePassword: user.mustChangePassword,
+    teamMemberId: user.teamMemberId,
   };
+}
+
+/**
+ * Ensures user is authenticated, even if they still need to change their
+ * temporary password (used on /ubah-password and its action).
+ */
+export async function requireUserAllowPasswordChange(): Promise<SessionUser> {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return user;
 }
 
 /**
@@ -80,10 +104,24 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
  * security.
  */
 export async function requireUser(): Promise<SessionUser> {
-  const user = await getCurrentUser();
+  const user = await requireUserAllowPasswordChange();
 
-  if (!user) {
-    redirect("/login");
+  if (user.mustChangePassword) {
+    redirect("/ubah-password");
+  }
+
+  return user;
+}
+
+/**
+ * Guarantees that the current user has the ADMIN role.
+ * Redirects to /dashboard if a PENGAJAR tries to access it.
+ */
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+
+  if (user.role !== "ADMIN") {
+    redirect("/dashboard");
   }
 
   return user;

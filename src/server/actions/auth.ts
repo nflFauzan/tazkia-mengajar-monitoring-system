@@ -2,10 +2,17 @@
 
 import { redirect } from "next/navigation";
 
-import { verifyPassword } from "@/lib/auth/password";
-import { clearSessionCookie, setSessionCookie } from "@/lib/auth/session";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import {
+  clearSessionCookie,
+  requireUserAllowPasswordChange,
+  setSessionCookie,
+} from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { loginSchema } from "@/lib/validation/auth";
+import {
+  firstTimePasswordChangeSchema,
+  loginSchema,
+} from "@/lib/validation/auth";
 
 import { fail, fromZodError, handleUnexpected, ok } from "./types";
 import type { ActionResult } from "./types";
@@ -49,6 +56,8 @@ export async function loginAction(
         name: true,
         role: true,
         isActive: true,
+        mustChangePassword: true,
+        teamMemberId: true,
         passwordHash: true,
       },
     });
@@ -67,6 +76,8 @@ export async function loginAction(
       username: user.username,
       name: user.name,
       role: user.role,
+      mustChangePassword: user.mustChangePassword,
+      teamMemberId: user.teamMemberId,
     });
 
     return ok();
@@ -79,7 +90,71 @@ export async function loginAction(
   }
 }
 
+export async function firstTimeChangePasswordAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const currentUser = await requireUserAllowPasswordChange();
+
+  const parsed = firstTimePasswordChangeSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newPassword: formData.get("newPassword"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return fromZodError(parsed.error);
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      select: { passwordHash: true },
+    });
+
+    if (!user) {
+      return fail("Pengguna tidak ditemukan.");
+    }
+
+    const currentMatches = await verifyPassword(
+      parsed.data.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!currentMatches) {
+      return fail("Password saat ini salah.", {
+        currentPassword: "Password saat ini salah.",
+      });
+    }
+
+    const newHash = await hashPassword(parsed.data.newPassword);
+
+    await prisma.user.update({
+      where: { id: currentUser.id },
+      data: {
+        passwordHash: newHash,
+        mustChangePassword: false,
+      },
+    });
+
+    // Refresh session cookie with mustChangePassword = false
+    await setSessionCookie({
+      ...currentUser,
+      mustChangePassword: false,
+    });
+
+    return ok();
+  } catch (error) {
+    return handleUnexpected(
+      "firstTimeChangePasswordAction",
+      error,
+      "Gagal mengubah password. Silakan coba lagi.",
+    );
+  }
+}
+
 export async function logoutAction(): Promise<never> {
   await clearSessionCookie();
   redirect("/login");
 }
+

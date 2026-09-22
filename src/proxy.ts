@@ -41,6 +41,36 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Enforce first-time password change before letting the user access anything else
+  if (user.mustChangePassword) {
+    if (pathname !== "/ubah-password") {
+      return NextResponse.redirect(new URL("/ubah-password", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Once password is changed, prevent revisiting /ubah-password
+  if (pathname === "/ubah-password") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Optimistic gate for Pengajar: bounce them away from Admin-only sections
+  if (user.role === "PENGAJAR") {
+    const ADMIN_ONLY_PREFIXES = [
+      "/kegiatan/baru",
+      "/laporan",
+      "/pengaturan",
+    ];
+
+    const isAdminOnly = ADMIN_ONLY_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+
+    if (isAdminOnly) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 

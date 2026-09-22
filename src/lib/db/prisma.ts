@@ -31,7 +31,19 @@ const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function getPrismaClient() {
+  const cached = globalForPrisma.prisma;
+  if (
+    cached &&
+    process.env.NODE_ENV === "development" &&
+    !("attendanceAppeal" in cached)
+  ) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma ?? createPrismaClient();
+}
+
+export const prisma = getPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

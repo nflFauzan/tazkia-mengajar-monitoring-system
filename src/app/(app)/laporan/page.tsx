@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { formatTanggalSingkat } from "@/lib/dates";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -31,7 +31,7 @@ export const metadata: Metadata = { title: "Semua Laporan" };
 export default async function LaporanPage({
   searchParams,
 }: PageProps<"/laporan">) {
-  await requireUser();
+  await requireAdmin();
 
   const params = await searchParams;
   const { page, skip, take } = parsePageParam(
@@ -56,7 +56,7 @@ export default async function LaporanPage({
       }
     : {};
 
-  const [reports, total] = await prisma.$transaction([
+  const [reports, total] = await Promise.all([
     prisma.report.findMany({
       where,
       orderBy: { generatedAt: "desc" },

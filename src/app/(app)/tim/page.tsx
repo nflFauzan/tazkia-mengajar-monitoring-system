@@ -30,7 +30,8 @@ import {
 export const metadata: Metadata = { title: "Tim" };
 
 export default async function TimPage({ searchParams }: PageProps<"/tim">) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
 
   const params = await searchParams;
   const { page, skip, take } = parsePageParam(
@@ -50,7 +51,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
       }
     : {};
 
-  const [members, total] = await prisma.$transaction([
+  const [members, total] = await Promise.all([
     prisma.teamMember.findMany({
       where,
       orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
@@ -76,8 +77,8 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
     <>
       <PageHeader
         title="Tim"
-        description="Pengajar, pembimbing, dan anggota tim dicatat sebagai satu daftar."
-        actions={<AddTeamMemberButton />}
+        description="Direktori pengajar, pembimbing, dan anggota tim Tazkia Mengajar."
+        actions={isAdmin ? <AddTeamMemberButton /> : null}
       />
 
       <div className="mb-4">
@@ -91,9 +92,9 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
           description={
             search
               ? `Tidak ada anggota yang cocok dengan "${search}".`
-              : "Tambahkan anggota tim agar bisa dipilih saat mencatat kegiatan."
+              : "Daftar anggota tim belum tersedia."
           }
-          action={search ? undefined : <AddTeamMemberButton />}
+          action={isAdmin && !search ? <AddTeamMemberButton /> : undefined}
         />
       ) : (
         <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
@@ -106,7 +107,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                 <TableHead className="hidden lg:table-cell">Kontak</TableHead>
                 <TableHead className="hidden lg:table-cell">Kegiatan</TableHead>
                 <TableHead>Aktif</TableHead>
-                <TableHead className="w-20 text-right">Aksi</TableHead>
+                {isAdmin ? <TableHead className="w-20 text-right">Aksi</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -122,7 +123,18 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                     {member.status ?? "—"}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {member.phone ?? "—"}
+                    {member.phone ? (
+                      <a
+                        href={`https://wa.me/${member.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline font-mono text-xs"
+                      >
+                        {member.phone}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell className="hidden tabular-nums lg:table-cell">
                     {member._count.activityAttendances}
@@ -134,9 +146,11 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                       <Badge variant="secondary">Arsip</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <TeamMemberRowActions member={member} />
-                  </TableCell>
+                  {isAdmin ? (
+                    <TableCell className="text-right">
+                      <TeamMemberRowActions member={member} />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>

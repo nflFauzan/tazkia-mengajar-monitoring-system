@@ -38,7 +38,8 @@ export const metadata: Metadata = { title: "Semua Jadwal" };
 export default async function JadwalPage({
   searchParams,
 }: PageProps<"/jadwal">) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
 
   const params = await searchParams;
   const { page, skip, take } = parsePageParam(
@@ -62,7 +63,7 @@ export default async function JadwalPage({
     : {};
 
   const [schedules, total, locations, teamMembers, studentGroups] =
-    await prisma.$transaction([
+    await Promise.all([
       prisma.schedule.findMany({
         where,
         orderBy: [{ isActive: "desc" }, { startDate: "desc" }],
@@ -127,12 +128,18 @@ export default async function JadwalPage({
         title="Semua Jadwal"
         description="Rencana kegiatan. Jadwal tidak otomatis menjadi kegiatan yang terlaksana."
         actions={
-          <>
+          isAdmin ? (
+            <>
+              <ButtonLink href="/jadwal/kalender" variant="outline">
+                Kalender
+              </ButtonLink>
+              <AddScheduleButton options={options} />
+            </>
+          ) : (
             <ButtonLink href="/jadwal/kalender" variant="outline">
               Kalender
             </ButtonLink>
-            <AddScheduleButton options={options} />
-          </>
+          )
         }
       />
 
@@ -147,9 +154,9 @@ export default async function JadwalPage({
           description={
             search
               ? `Tidak ada jadwal yang cocok dengan "${search}".`
-              : "Buat jadwal rutin agar kegiatan lebih mudah direncanakan."
+              : "Daftar jadwal kegiatan belum tersedia."
           }
-          action={search ? undefined : <AddScheduleButton options={options} />}
+          action={isAdmin && !search ? <AddScheduleButton options={options} /> : undefined}
         />
       ) : (
         <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
@@ -162,7 +169,7 @@ export default async function JadwalPage({
                 <TableHead className="hidden sm:table-cell">Waktu</TableHead>
                 <TableHead className="hidden lg:table-cell">Periode</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-20 text-right">Aksi</TableHead>
+                {isAdmin ? <TableHead className="w-20 text-right">Aksi</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -193,32 +200,34 @@ export default async function JadwalPage({
                       <Badge variant="secondary">Nonaktif</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <ScheduleRowActions
-                      options={options}
-                      schedule={{
-                        id: schedule.id,
-                        locationId: schedule.locationId,
-                        title: schedule.title,
-                        recurrence: schedule.recurrence,
-                        daysOfWeek: schedule.daysOfWeek,
-                        startDate: toDateInputValue(schedule.startDate),
-                        endDate: schedule.endDate
-                          ? toDateInputValue(schedule.endDate)
-                          : null,
-                        startTime: schedule.startTime,
-                        endTime: schedule.endTime,
-                        notes: schedule.notes,
-                        isActive: schedule.isActive,
-                        teamMemberIds: schedule.teamMembers.map(
-                          (entry) => entry.teamMemberId,
-                        ),
-                        studentGroupIds: schedule.studentGroups.map(
-                          (entry) => entry.studentGroupId,
-                        ),
-                      }}
-                    />
-                  </TableCell>
+                  {isAdmin ? (
+                    <TableCell className="text-right">
+                      <ScheduleRowActions
+                        options={options}
+                        schedule={{
+                          id: schedule.id,
+                          locationId: schedule.locationId,
+                          title: schedule.title,
+                          recurrence: schedule.recurrence,
+                          daysOfWeek: schedule.daysOfWeek,
+                          startDate: toDateInputValue(schedule.startDate),
+                          endDate: schedule.endDate
+                            ? toDateInputValue(schedule.endDate)
+                            : null,
+                          startTime: schedule.startTime,
+                          endTime: schedule.endTime,
+                          notes: schedule.notes,
+                          isActive: schedule.isActive,
+                          teamMemberIds: schedule.teamMembers.map(
+                            (entry) => entry.teamMemberId,
+                          ),
+                          studentGroupIds: schedule.studentGroups.map(
+                            (entry) => entry.studentGroupId,
+                          ),
+                        }}
+                      />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>

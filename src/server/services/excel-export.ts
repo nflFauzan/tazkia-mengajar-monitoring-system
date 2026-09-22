@@ -202,6 +202,66 @@ export async function buildActivityWorkbook(
   return workbook;
 }
 
+export async function buildStudentAssessmentWorkbook(filters?: {
+  locationId?: string;
+  studentGroupId?: string;
+}): Promise<ExcelJS.Workbook> {
+  const { getStudentAssessmentsRecap } = await import("./student-assessments");
+  const recap = await getStudentAssessmentsRecap(filters);
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Tazkia Mengajar Monitoring System";
+  workbook.created = new Date();
+
+  const sheet = workbook.addWorksheet("Rekap Capaian Murid");
+  styleHeader(
+    sheet.addRow([
+      "No",
+      "Nama Murid",
+      "L/P",
+      "Tempat Binaan",
+      "Kelompok",
+      "Materi Tuntas/Lancar",
+      "Target Kurikulum",
+      "Progres (%)",
+      "Materi Terakhir",
+      "Status Terakhir",
+      "Penilai Terakhir",
+      "Tanggal Penilaian",
+    ]),
+  );
+
+  recap.students.forEach((s, idx) => {
+    const percent = Math.round(
+      (s.completedMaterialsCount / s.targetMaterialsCount) * 100,
+    );
+    sheet.addRow([
+      idx + 1,
+      s.studentName,
+      s.studentGender === "LAKI_LAKI" ? "L" : "P",
+      s.locationName,
+      s.groupName,
+      s.completedMaterialsCount,
+      s.targetMaterialsCount,
+      `${percent}%`,
+      s.lastAssessment?.materialTitle ?? "-",
+      s.lastAssessment?.status ?? "-",
+      s.lastAssessment?.assessedByName ?? "-",
+      s.lastAssessment?.createdAt
+        ? formatTanggal(s.lastAssessment.createdAt)
+        : "-",
+    ]);
+  });
+
+  autoWidth(sheet, [6, 26, 6, 26, 20, 22, 18, 14, 30, 16, 22, 18]);
+
+  if (sheet.rowCount === 1) {
+    sheet.addRow(["Belum ada data capaian murid."]);
+  }
+
+  return workbook;
+}
+
 /** A filename that sorts chronologically and says what it contains. */
 export function buildExportFilename(prefix: string): string {
   const stamp = new Date().toISOString().slice(0, 10);

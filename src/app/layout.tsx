@@ -35,6 +35,14 @@ export const metadata: Metadata = {
   },
   description:
     "Sistem internal untuk mencatat, memantau, dan melaporkan kegiatan Tazkia Mengajar.",
+  icons: {
+    icon: [
+      { url: "/brand/logo-tazkia-mengajar.png" },
+      { url: "/icon.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/brand/logo-tazkia-mengajar.png",
+    apple: "/apple-icon.png",
+  },
   // Internal administrative tool: it should never show up in search results.
   robots: { index: false, follow: false },
 };

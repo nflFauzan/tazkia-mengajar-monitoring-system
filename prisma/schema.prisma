@@ -22,6 +22,14 @@ datasource db {
 /// require a migration of every authorization call site.
 enum Role {
   ADMIN
+  PEMBIMBING
+  PENGAJAR
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum AttendanceStatus {
@@ -52,21 +60,27 @@ enum Gender {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String  @id @default(cuid())
-  username     String  @unique
-  passwordHash String
-  name         String
-  role         Role    @default(ADMIN)
-  isActive     Boolean @default(true)
+  id                 String      @id @default(cuid())
+  username           String      @unique
+  passwordHash       String
+  name               String
+  role               Role        @default(ADMIN)
+  isActive           Boolean     @default(true)
+  mustChangePassword Boolean     @default(false)
+  teamMemberId       String?     @unique
+  teamMember         TeamMember? @relation(fields: [teamMemberId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  activitiesCreated Activity[] @relation("ActivityCreatedBy")
-  activitiesUpdated Activity[] @relation("ActivityUpdatedBy")
-  reportsCreated    Report[]   @relation("ReportCreatedBy")
+  activitiesCreated  Activity[]          @relation("ActivityCreatedBy")
+  activitiesUpdated  Activity[]          @relation("ActivityUpdatedBy")
+  reportsCreated     Report[]            @relation("ReportCreatedBy")
+  appealsReviewed    AttendanceAppeal[]  @relation("AppealReviewedBy")
+  assessmentsCreated StudentAssessment[] @relation("AssessmentCreatedBy")
 
   @@index([isActive])
+  @@index([role])
   @@map("users")
 }
 
@@ -113,6 +127,8 @@ model TeamMember {
 
   scheduleAssignments ScheduleTeamMember[]
   activityAttendances ActivityTeamMember[]
+  appeals             AttendanceAppeal[]
+  user                User?
 
   @@index([isActive])
   @@index([fullName])
@@ -153,8 +169,9 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  studentGroup StudentGroup      @relation(fields: [studentGroupId], references: [id], onDelete: Cascade)
+  studentGroup StudentGroup        @relation(fields: [studentGroupId], references: [id], onDelete: Cascade)
   attendances  ActivityStudent[]
+  assessments  StudentAssessment[]
 
   @@index([studentGroupId])
   @@index([isActive])
@@ -212,8 +229,9 @@ model CurriculumMaterial {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  period            CurriculumPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  period            CurriculumPeriod    @relation(fields: [periodId], references: [id], onDelete: Cascade)
   activityMaterials ActivityMaterial[]
+  assessments       StudentAssessment[]
 
   @@index([periodId])
   @@index([isActive])
@@ -326,6 +344,8 @@ model Activity {
   materials   ActivityMaterial[]
   documents   Documentation[]
   report      Report?
+  appeals     AttendanceAppeal[]
+  assessments StudentAssessment[]
 
   @@index([date])
   @@index([status])
@@ -344,6 +364,7 @@ model ActivityTeamMember {
   /// Preserves the order the admin chose, because the report lists the team in
   /// that order (PRD 18).
   orderIndex   Int              @default(0)
+  checkedInAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -442,4 +463,56 @@ model Report {
 
   @@index([generatedAt])
   @@map("reports")
+}
+
+// ---------------------------------------------------------------------------
+// Attendance Appeal — Pengajuan Banding Absensi
+// ---------------------------------------------------------------------------
+
+model AttendanceAppeal {
+  id                 String           @id @default(cuid())
+  activityId         String
+  teamMemberId       String
+  proposedAttendance AttendanceStatus @default(HADIR)
+  reason             String
+  status             AppealStatus     @default(PENDING)
+  adminNote          String?
+  reviewedById       String?
+  createdAt          DateTime         @default(now())
+  reviewedAt         DateTime?
+
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  reviewedBy User?      @relation("AppealReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([activityId, teamMemberId])
+  @@index([status])
+  @@map("attendance_appeals")
+}
+
+// ---------------------------------------------------------------------------
+// Student Assessment — Penilaian Capaian Murid (Terhubung Kurikulum)
+// ---------------------------------------------------------------------------
+
+model StudentAssessment {
+  id           String   @id @default(cuid())
+  studentId    String
+  materialId   String?
+  customTitle  String?
+  status       String   // e.g. "Tuntas", "Lancar", "Cukup", "Perlu Bimbingan"
+  notes        String?
+  assessedById String
+  activityId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student    Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  material   CurriculumMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  assessedBy User                @relation("AssessmentCreatedBy", fields: [assessedById], references: [id], onDelete: Restrict)
+  activity   Activity?           @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([materialId])
+  @@index([assessedById])
+  @@map("student_assessments")
 }

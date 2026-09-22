@@ -36,7 +36,8 @@ export const metadata: Metadata = { title: "Semua Kegiatan" };
 export default async function KegiatanPage({
   searchParams,
 }: PageProps<"/kegiatan">) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
 
   const params = await searchParams;
   const { page, skip, take } = parsePageParam(
@@ -46,8 +47,7 @@ export default async function KegiatanPage({
   const filters = readActivityFilters(params);
   const where = buildActivityWhere(filters);
 
-  const [activities, total, locations, teamMembers] = await prisma.$transaction(
-    [
+  const [activities, total, locations, teamMembers] = await Promise.all([
       prisma.activity.findMany({
         where,
         orderBy: { date: "desc" },
@@ -101,10 +101,12 @@ export default async function KegiatanPage({
               <Download className="size-4" />
               Export Excel
             </ButtonLink>
-            <ButtonLink href="/kegiatan/baru">
-              <Plus className="size-4" />
-              Tambah Kegiatan
-            </ButtonLink>
+            {isAdmin ? (
+              <ButtonLink href="/kegiatan/baru">
+                <Plus className="size-4" />
+                Tambah Kegiatan
+              </ButtonLink>
+            ) : null}
           </>
         }
       />

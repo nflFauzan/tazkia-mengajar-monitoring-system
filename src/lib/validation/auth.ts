@@ -36,8 +36,8 @@ export const createUserSchema = z.object({
     .min(3, "Username minimal 3 karakter.")
     .max(64, "Username terlalu panjang.")
     .regex(
-      /^[a-zA-Z0-9._-]+$/,
-      "Username hanya boleh berisi huruf, angka, titik, garis bawah, dan strip.",
+      /^[a-zA-Z0-9._@-]+$/,
+      "Username hanya boleh berisi huruf, angka, titik, garis bawah, strip, dan @.",
     ),
   name: z
     .string()
@@ -48,3 +48,38 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const createPengajarUserSchema = z.object({
+  teamMemberId: z.string().min(1, "Anggota tim wajib dipilih."),
+  username: z
+    .string()
+    .trim()
+    .min(3, "Username minimal 3 karakter.")
+    .max(64, "Username terlalu panjang.")
+    .regex(
+      /^[a-zA-Z0-9._@-]+$/,
+      "Username hanya boleh berisi huruf, angka, titik, garis bawah, strip, dan @.",
+    ),
+  initialPassword: passwordSchema,
+});
+
+export type CreatePengajarUserInput = z.infer<typeof createPengajarUserSchema>;
+
+export const firstTimePasswordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Password saat ini wajib diisi."),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, "Konfirmasi password baru wajib diisi."),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password baru tidak cocok.",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "Password baru harus berbeda dari password saat ini.",
+    path: ["newPassword"],
+  });
+
+export type FirstTimePasswordChangeInput = z.infer<
+  typeof firstTimePasswordChangeSchema
+>;

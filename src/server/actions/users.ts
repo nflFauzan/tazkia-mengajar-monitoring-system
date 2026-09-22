@@ -2,10 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/db/prisma";
-import { createUserSchema, passwordSchema } from "@/lib/validation/auth";
+import {
+  createPengajarUserSchema,
+  createUserSchema,
+  passwordSchema,
+} from "@/lib/validation/auth";
 
 import { fail, fromZodError, handleUnexpected, ok } from "./types";
 import type { ActionResult } from "./types";
@@ -16,7 +20,7 @@ export async function createAdminAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireUser();
+  await requireAdmin();
 
   const parsed = createUserSchema.safeParse({
     username: formData.get("username"),
@@ -32,6 +36,7 @@ export async function createAdminAction(
         name: parsed.data.name,
         passwordHash: await hashPassword(parsed.data.password),
         role: "ADMIN",
+        mustChangePassword: false,
       },
     });
 
@@ -56,11 +61,107 @@ export async function createAdminAction(
   }
 }
 
+export async function createPengajarUserAction(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = createPengajarUserSchema.safeParse({
+    teamMemberId: formData.get("teamMemberId"),
+    username: formData.get("username"),
+    initialPassword: formData.get("initialPassword"),
+  });
+
+  if (!parsed.success) return fromZodError(parsed.error);
+
+  try {
+    const teamMember = await prisma.teamMember.findUnique({
+      where: { id: parsed.data.teamMemberId },
+      include: { user: { select: { id: true } } },
+    });
+
+    if (!teamMember || !teamMember.isActive) {
+      return fail("Anggota tim tidak ditemukan atau tidak aktif.");
+    }
+
+    if (teamMember.user) {
+      return fail("Anggota tim ini sudah memiliki akun pengguna.");
+    }
+
+    await prisma.user.create({
+      data: {
+        username: parsed.data.username,
+        name: teamMember.fullName,
+        passwordHash: await hashPassword(parsed.data.initialPassword),
+        role: "PENGAJAR",
+        mustChangePassword: true,
+        teamMemberId: teamMember.id,
+      },
+    });
+
+    revalidatePath(SETTINGS_PATH);
+    return ok();
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2002"
+    ) {
+      return fail("Periksa kembali data yang diisi.", {
+        username: "Username sudah dipakai.",
+      });
+    }
+    return handleUnexpected(
+      "createPengajarUserAction",
+      error,
+      "Gagal membuat akun pengajar. Silakan coba lagi.",
+    );
+  }
+}
+
+export async function resetPengajarPasswordAction(
+  userId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+
+  const temporaryPassword = formData.get("temporaryPassword");
+  const parsed = passwordSchema.safeParse(temporaryPassword);
+
+  if (!parsed.success) {
+    return fail("Periksa kembali data yang diisi.", {
+      temporaryPassword:
+        parsed.error.issues[0]?.message ?? "Password tidak valid.",
+    });
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: await hashPassword(parsed.data),
+        mustChangePassword: true,
+      },
+    });
+
+    revalidatePath(SETTINGS_PATH);
+    return ok();
+  } catch (error) {
+    return handleUnexpected(
+      "resetPengajarPasswordAction",
+      error,
+      "Gagal mereset password pengajar. Silakan coba lagi.",
+    );
+  }
+}
+
 export async function changePasswordAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const currentUser = await requireUser();
+  const currentUser = await requireAdmin();
 
   const userId = formData.get("userId");
   const password = formData.get("password");
@@ -103,7 +204,7 @@ export async function setUserActiveAction(
   userId: string,
   isActive: boolean,
 ): Promise<ActionResult> {
-  const currentUser = await requireUser();
+  const currentUser = await requireAdmin();
 
   // Deactivating yourself would sign you out on the next request and, if you
   // were the only admin, lock everyone out permanently.

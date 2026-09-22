@@ -4,13 +4,13 @@ import { MapPin } from "lucide-react";
 import { ActivityInfoForm } from "@/components/activities/activity-info-form";
 import { ButtonLink } from "@/components/common/button-link";
 import { EmptyState, PageHeader } from "@/components/common/page-shell";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata: Metadata = { title: "Tambah Kegiatan" };
 
 export default async function TambahKegiatanPage() {
-  await requireUser();
+  await requireAdmin();
 
   const locations = await prisma.location.findMany({
     where: { isActive: true },

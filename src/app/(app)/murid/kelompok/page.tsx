@@ -1,5 +1,6 @@
+import Link from "next/link";
 import type { Metadata } from "next";
-import { Layers } from "lucide-react";
+import { ChevronRight, Folder, Layers } from "lucide-react";
 
 import { ButtonLink } from "@/components/common/button-link";
 import {
@@ -33,7 +34,8 @@ export const metadata: Metadata = { title: "Kelompok Murid" };
 export default async function KelompokPage({
   searchParams,
 }: PageProps<"/murid/kelompok">) {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
 
   const params = await searchParams;
   const { page, skip, take } = parsePageParam(
@@ -56,7 +58,7 @@ export default async function KelompokPage({
       }
     : {};
 
-  const [groups, total, locations] = await prisma.$transaction([
+  const [groups, total, locations] = await Promise.all([
     prisma.studentGroup.findMany({
       where,
       orderBy: [{ isActive: "desc" }, { location: { name: "asc" } }, { name: "asc" }],
@@ -88,16 +90,31 @@ export default async function KelompokPage({
 
   return (
     <>
+      {/* Breadcrumbs */}
+      <nav aria-label="Breadcrumb" className="mb-3 flex items-center text-xs text-muted-foreground gap-1.5">
+        <Link href="/murid" className="hover:text-foreground">
+          Murid
+        </Link>
+        <ChevronRight className="size-3.5" />
+        <span className="font-semibold text-foreground">Kelompok</span>
+      </nav>
+
       <PageHeader
         title="Kelompok Murid"
-        description="Setiap tempat bisa punya kelompok sendiri sesuai kebutuhan."
+        description="Daftar kelompok murid per tempat. Klik kelompok untuk melihat dan menilai murid di dalamnya."
         actions={
-          <>
+          isAdmin ? (
+            <>
+              <ButtonLink href="/murid" variant="outline">
+                Folder Tempat
+              </ButtonLink>
+              <AddGroupButton locations={locationOptions} />
+            </>
+          ) : (
             <ButtonLink href="/murid" variant="outline">
-              Lihat Murid
+              &larr; Folder Tempat
             </ButtonLink>
-            <AddGroupButton locations={locationOptions} />
-          </>
+          )
         }
       />
 
@@ -113,15 +130,15 @@ export default async function KelompokPage({
             search
               ? `Tidak ada kelompok yang cocok dengan "${search}".`
               : locationOptions.length === 0
-                ? "Buat tempat terlebih dahulu, lalu tambahkan kelompok murid di dalamnya."
-                : "Buat kelompok seperti Kelas Anak, Remaja, atau Tahsin."
+                ? "Belum ada tempat yang terdaftar."
+                : "Daftar kelompok murid belum tersedia."
           }
           action={
-            search ? undefined : locationOptions.length === 0 ? (
-              <ButtonLink href="/tempat">Buat tempat</ButtonLink>
-            ) : (
-              <AddGroupButton locations={locationOptions} />
-            )
+            !isAdmin || search
+              ? undefined
+              : locationOptions.length === 0
+                ? <ButtonLink href="/tempat">Buat tempat</ButtonLink>
+                : <AddGroupButton locations={locationOptions} />
           }
         />
       ) : (
@@ -134,19 +151,42 @@ export default async function KelompokPage({
                 <TableHead className="hidden lg:table-cell">Deskripsi</TableHead>
                 <TableHead>Murid</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-20 text-right">Aksi</TableHead>
+                {isAdmin ? <TableHead className="w-20 text-right">Aksi</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
               {groups.map((group) => (
                 <TableRow key={group.id}>
-                  <TableCell className="font-medium">{group.name}</TableCell>
-                  <TableCell>{group.location.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link
+                      href={`/murid?tempatId=${group.locationId}&kelompokId=${group.id}`}
+                      className="hover:underline text-primary flex items-center gap-1.5"
+                    >
+                      <Folder className="size-3.5 shrink-0" />
+                      {group.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/murid?tempatId=${group.locationId}`}
+                      className="hover:underline text-muted-foreground hover:text-foreground"
+                    >
+                      {group.location.name}
+                    </Link>
+                  </TableCell>
                   <TableCell className="text-muted-foreground hidden max-w-xs truncate lg:table-cell">
                     {group.description ?? "—"}
                   </TableCell>
-                  <TableCell className="tabular-nums">
-                    {group._count.students}
+                  <TableCell>
+                    <ButtonLink
+                      href={`/murid?tempatId=${group.locationId}&kelompokId=${group.id}`}
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                    >
+                      <span>{group._count.students} Murid</span>
+                      <ChevronRight className="size-3" />
+                    </ButtonLink>
                   </TableCell>
                   <TableCell>
                     {group.isActive ? (
@@ -155,18 +195,20 @@ export default async function KelompokPage({
                       <Badge variant="secondary">Arsip</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <GroupRowActions
-                      group={{
-                        id: group.id,
-                        name: group.name,
-                        description: group.description,
-                        isActive: group.isActive,
-                        locationId: group.locationId,
-                      }}
-                      locations={locationOptions}
-                    />
-                  </TableCell>
+                  {isAdmin ? (
+                    <TableCell className="text-right">
+                      <GroupRowActions
+                        group={{
+                          id: group.id,
+                          name: group.name,
+                          description: group.description,
+                          isActive: group.isActive,
+                          locationId: group.locationId,
+                        }}
+                        locations={locationOptions}
+                      />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>

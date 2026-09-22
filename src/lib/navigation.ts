@@ -1,4 +1,5 @@
 import {
+  BookCheck,
   BookOpen,
   CalendarDays,
   ClipboardList,
@@ -6,6 +7,7 @@ import {
   LayoutDashboard,
   MapPin,
   Settings,
+  UserCheck,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -24,11 +26,7 @@ export interface NavItem {
 }
 
 /**
- * The sidebar structure from PRD section 33, defined once so the sidebar, the
- * mobile drawer and the breadcrumbs all stay in agreement.
- *
- * `href` on a parent points at the page a click should open; `children` are the
- * sub-pages shown when that section is active.
+ * The sidebar structure for Admin users.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -63,10 +61,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Murid",
     href: "/murid",
     icon: UsersRound,
-    children: [
-      { label: "Semua Murid", href: "/murid" },
-      { label: "Kelompok", href: "/murid/kelompok" },
-    ],
   },
   {
     label: "Kurikulum",
@@ -88,11 +82,74 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    label: "Panduan & SOP",
+    href: "/panduan",
+    icon: BookCheck,
+  },
+  {
     label: "Pengaturan",
     href: "/pengaturan",
     icon: Settings,
   },
 ];
+
+export const PENGAJAR_NAV_ITEMS: NavItem[] = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "Absensi Mandiri",
+    href: "/absensi",
+    icon: UserCheck,
+  },
+  {
+    label: "Kegiatan",
+    href: "/kegiatan",
+    icon: ClipboardList,
+  },
+  {
+    label: "Jadwal",
+    href: "/jadwal",
+    icon: CalendarDays,
+    children: [
+      { label: "Kalender", href: "/jadwal/kalender" },
+      { label: "Semua Jadwal", href: "/jadwal" },
+    ],
+  },
+  {
+    label: "Tim",
+    href: "/tim",
+    icon: Users,
+  },
+  {
+    label: "Murid",
+    href: "/murid",
+    icon: UsersRound,
+  },
+  {
+    label: "Kurikulum",
+    href: "/kurikulum",
+    icon: BookOpen,
+  },
+  {
+    label: "Tempat",
+    href: "/tempat",
+    icon: MapPin,
+  },
+  {
+    label: "Panduan & SOP",
+    href: "/panduan",
+    icon: BookCheck,
+  },
+];
+
+export function getNavItemsForRole(
+  role: "ADMIN" | "PENGAJAR" | "PEMBIMBING",
+): NavItem[] {
+  return role === "ADMIN" ? NAV_ITEMS : PENGAJAR_NAV_ITEMS;
+}
 
 /**
  * True when `href` is the current page or one of its sub-pages.
@@ -105,11 +162,14 @@ export function isActivePath(pathname: string, href: string): boolean {
   return pathname.startsWith(`${href}/`);
 }
 
-/** Breadcrumb trail for a pathname, derived from the same nav tree. */
+/** Breadcrumb trail for a pathname, derived from the nav tree for the role. */
 export function getBreadcrumbs(
   pathname: string,
+  role?: "ADMIN" | "PENGAJAR" | "PEMBIMBING",
 ): Array<{ label: string; href: string }> {
-  for (const item of NAV_ITEMS) {
+  const items = getNavItemsForRole(role ?? "ADMIN");
+
+  for (const item of items) {
     if (!isActivePath(pathname, item.href)) continue;
 
     const trail = [{ label: item.label, href: item.href }];
@@ -120,6 +180,11 @@ export function getBreadcrumbs(
     }
 
     return trail;
+  }
+
+  // Fallback for special routes like /absensi or /ubah-password
+  if (pathname === "/absensi") {
+    return [{ label: "Absensi Mandiri", href: "/absensi" }];
   }
 
   return [];

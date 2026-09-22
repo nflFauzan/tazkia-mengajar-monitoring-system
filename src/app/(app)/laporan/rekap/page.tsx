@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { requireUser } from "@/lib/auth/session";
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import {
   buildActivityWhere,
@@ -31,7 +31,7 @@ export const metadata: Metadata = { title: "Rekap" };
 export default async function RekapPage({
   searchParams,
 }: PageProps<"/laporan/rekap">) {
-  await requireUser();
+  await requireAdmin();
 
   const params = await searchParams;
   const filters = readActivityFilters(params);
@@ -47,7 +47,7 @@ export default async function RekapPage({
     documentationCount,
     locations,
     teamMembers,
-  ] = await prisma.$transaction([
+  ] = await Promise.all([
     prisma.activity.count({ where }),
     prisma.activity.aggregate({ where, _sum: { beneficiaryCount: true } }),
     prisma.activityTeamMember.count({ where: { activity: where } }),

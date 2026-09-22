@@ -149,6 +149,8 @@ interface FieldProps {
   name: string;
   label: string;
   defaultValue?: string | null;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   placeholder?: string;
   type?: string;
@@ -159,6 +161,8 @@ export function TextField({
   name,
   label,
   defaultValue,
+  value,
+  onChange,
   required,
   placeholder,
   type = "text",
@@ -176,7 +180,9 @@ export function TextField({
         id={name}
         name={name}
         type={type}
-        defaultValue={defaultValue ?? ""}
+        defaultValue={value === undefined ? (defaultValue ?? "") : undefined}
+        value={value}
+        onChange={onChange}
         placeholder={placeholder}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${name}-error` : undefined}

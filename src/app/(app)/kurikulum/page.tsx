@@ -9,6 +9,7 @@ import {
   DeletePeriodButton,
   MaterialActions,
 } from "@/components/curriculum/curriculum-manager";
+import { MaterialDetailDialog } from "@/components/curriculum/material-detail-dialog";
 import { EmptyState, PageHeader } from "@/components/common/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/auth/session";
@@ -22,7 +23,8 @@ export const metadata: Metadata = { title: "Kurikulum" };
  * is what the admin needs to see at once when planning a session.
  */
 export default async function KurikulumPage() {
-  await requireUser();
+  const user = await requireUser();
+  const isAdmin = user.role === "ADMIN";
 
   const curriculums = await prisma.curriculum.findMany({
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
@@ -59,16 +61,24 @@ export default async function KurikulumPage() {
     <>
       <PageHeader
         title="Kurikulum"
-        description="Kurikulum, periode, dan materi yang bisa dikaitkan ke kegiatan."
-        actions={<AddCurriculumButton />}
+        description={
+          isAdmin
+            ? "Kurikulum, periode, dan materi yang bisa dikaitkan ke kegiatan."
+            : "Daftar kurikulum dan materi ajar untuk panduan kegiatan belajar-mengajar."
+        }
+        actions={isAdmin ? <AddCurriculumButton /> : undefined}
       />
 
       {curriculums.length === 0 ? (
         <EmptyState
           icon={BookOpen}
           title="Belum ada kurikulum."
-          description="Buat kurikulum, lalu tambahkan periode dan materi di dalamnya."
-          action={<AddCurriculumButton />}
+          description={
+            isAdmin
+              ? "Buat kurikulum, lalu tambahkan periode dan materi di dalamnya."
+              : "Belum ada kurikulum yang ditambahkan oleh admin."
+          }
+          action={isAdmin ? <AddCurriculumButton /> : undefined}
         />
       ) : (
         <div className="space-y-4">
@@ -88,22 +98,24 @@ export default async function KurikulumPage() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <AddPeriodButton curriculumId={curriculum.id} />
-                  <CurriculumActions
-                    curriculum={{
-                      id: curriculum.id,
-                      name: curriculum.name,
-                      description: curriculum.description,
-                      isActive: curriculum.isActive,
-                    }}
-                  />
-                </div>
+                {isAdmin ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <AddPeriodButton curriculumId={curriculum.id} />
+                    <CurriculumActions
+                      curriculum={{
+                        id: curriculum.id,
+                        name: curriculum.name,
+                        description: curriculum.description,
+                        isActive: curriculum.isActive,
+                      }}
+                    />
+                  </div>
+                ) : null}
               </header>
 
               {curriculum.periods.length === 0 ? (
                 <p className="text-muted-foreground p-4 text-sm">
-                  Belum ada periode. Tambahkan periode seperti Semester 1.
+                  Belum ada periode pada kurikulum ini.
                 </p>
               ) : (
                 <div className="divide-y">
@@ -111,13 +123,15 @@ export default async function KurikulumPage() {
                     <div key={period.id} className="p-4">
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <h3 className="text-sm font-medium">{period.name}</h3>
-                        <div className="flex items-center gap-1">
-                          <AddMaterialButton periodId={period.id} />
-                          <DeletePeriodButton
-                            periodId={period.id}
-                            periodName={period.name}
-                          />
-                        </div>
+                        {isAdmin ? (
+                          <div className="flex items-center gap-1">
+                            <AddMaterialButton periodId={period.id} />
+                            <DeletePeriodButton
+                              periodId={period.id}
+                              periodName={period.name}
+                            />
+                          </div>
+                        ) : null}
                       </div>
 
                       {period.materials.length === 0 ? (
@@ -125,13 +139,13 @@ export default async function KurikulumPage() {
                           Belum ada materi pada periode ini.
                         </p>
                       ) : (
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2">
                           {period.materials.map((material) => (
                             <li
                               key={material.id}
-                              className="bg-muted/40 flex items-start justify-between gap-3 rounded-md p-2.5"
+                              className="bg-muted/40 flex items-start justify-between gap-3 rounded-md p-3"
                             >
-                              <div className="min-w-0">
+                              <div className="min-w-0 space-y-1">
                                 <p className="text-sm font-medium">
                                   {material.meetingLabel
                                     ? `${material.meetingLabel} — `
@@ -147,12 +161,31 @@ export default async function KurikulumPage() {
                                   )}
                                 </p>
                                 {material.objective ? (
-                                  <p className="text-muted-foreground mt-0.5 text-xs">
-                                    {material.objective}
+                                  <p className="text-muted-foreground text-xs">
+                                    <strong className="text-foreground">Tujuan:</strong> {material.objective}
+                                  </p>
+                                ) : null}
+                                {material.description ? (
+                                  <p className="text-muted-foreground text-xs">
+                                    <strong className="text-foreground">Deskripsi:</strong> {material.description}
+                                  </p>
+                                ) : null}
+                                {material.notes ? (
+                                  <p className="text-muted-foreground text-xs italic">
+                                    Catatan: {material.notes}
                                   </p>
                                 ) : null}
                               </div>
-                              <MaterialActions material={material} />
+                              <div className="flex shrink-0 items-center gap-1">
+                                <MaterialDetailDialog
+                                  material={material}
+                                  periodName={period.name}
+                                  curriculumName={curriculum.name}
+                                />
+                                {isAdmin ? (
+                                  <MaterialActions material={material} />
+                                ) : null}
+                              </div>
                             </li>
                           ))}
                         </ul>
