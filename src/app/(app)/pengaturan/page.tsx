@@ -65,6 +65,7 @@ export default async function PengaturanPage() {
         fullName: true,
         nickname: true,
         status: true,
+        phone: true,
       },
     }),
   ]);
@@ -227,6 +228,7 @@ export default async function PengaturanPage() {
                           id: pengajar.id,
                           username: pengajar.username,
                           name: pengajar.name,
+                          phone: pengajar.teamMember?.phone,
                           isActive: pengajar.isActive,
                           mustChangePassword: pengajar.mustChangePassword,
                         }}

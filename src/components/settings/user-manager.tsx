@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Copy,
   KeyRound,
+  MessageCircle,
   Plus,
   RefreshCw,
   Sparkles,
@@ -21,6 +22,15 @@ import {
   generatePengajarUsername,
   generateTemporaryPassword,
 } from "@/lib/auth/credentials-generator";
+import {
+  CredentialSuccessDialog,
+  type CredentialSuccessData,
+} from "@/components/common/credential-success-dialog";
+import {
+  buildLoginCredentialsMessage,
+  buildPasswordResetMessage,
+  buildWhatsAppLink,
+} from "@/lib/whatsapp";
 import {
   changePasswordAction,
   createAdminAction,
@@ -152,9 +162,13 @@ export function AddPengajarButton({
     fullName: string;
     nickname?: string | null;
     status: string | null;
+    phone?: string | null;
   }>;
 }) {
   const [open, setOpen] = useState(false);
+  const [createdData, setCreatedData] = useState<CredentialSuccessData | null>(
+    null,
+  );
 
   return (
     <>
@@ -167,8 +181,16 @@ export function AddPengajarButton({
           open={open}
           onOpenChange={setOpen}
           teamMembers={teamMembers}
+          onSuccessCreated={(data) => setCreatedData(data)}
         />
       ) : null}
+      <CredentialSuccessDialog
+        open={Boolean(createdData)}
+        onOpenChange={(next) => {
+          if (!next) setCreatedData(null);
+        }}
+        data={createdData}
+      />
     </>
   );
 }
@@ -177,6 +199,7 @@ function AddPengajarDialog({
   open,
   onOpenChange,
   teamMembers,
+  onSuccessCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -185,7 +208,9 @@ function AddPengajarDialog({
     fullName: string;
     nickname?: string | null;
     status: string | null;
+    phone?: string | null;
   }>;
+  onSuccessCreated?: (data: CredentialSuccessData) => void;
 }) {
   const [selectedMemberId, setSelectedMemberId] = useState(
     () => teamMembers[0]?.id ?? "",
@@ -197,6 +222,7 @@ function AddPengajarDialog({
   const effectiveMemberId = selectedMemberId || teamMembers[0]?.id || "";
   const selectedMember =
     teamMembers.find((m) => m.id === effectiveMemberId) ?? teamMembers[0];
+  const [phone, setPhone] = useState(() => selectedMember?.phone ?? "");
 
   const autoUsername = selectedMember
     ? generatePengajarUsername(selectedMember.fullName, selectedMember.nickname, {
@@ -208,11 +234,32 @@ function AddPengajarDialog({
   const isUsernameEdited = customUsername !== null;
 
   const handleCopyCredentials = () => {
-    const displayName =
-      selectedMember?.nickname || selectedMember?.fullName || "Pengajar";
-    const text = `Assalamu'alaikum ${displayName},\nAkun Tazkia Mengajar kamu sudah dibuatkan:\n\nUsername: ${username}\nPassword Sementara: ${password}\n\nSilakan login dan kamu akan diminta mengganti password baru saat pertama kali login.`;
+    const text = buildLoginCredentialsMessage({
+      fullName: selectedMember?.fullName ?? "",
+      nickname: selectedMember?.nickname,
+      username,
+      temporaryPassword: password,
+    });
     navigator.clipboard.writeText(text);
     toast.success("Kredensial login disalin ke clipboard!");
+  };
+
+  const handleSendWhatsApp = () => {
+    const text = buildLoginCredentialsMessage({
+      fullName: selectedMember?.fullName ?? "",
+      nickname: selectedMember?.nickname,
+      username,
+      temporaryPassword: password,
+    });
+    const link = buildWhatsAppLink(phone, text);
+    if (!phone.trim()) {
+      toast.info(
+        "Nomor kontak belum diisi. Anda dapat memilih kontak secara manual di WhatsApp.",
+      );
+    } else {
+      toast.success("Membuka WhatsApp ke relawan pengajar...");
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
   };
 
   const handleRegeneratePassword = () => {
@@ -233,6 +280,16 @@ function AddPengajarDialog({
       title="Buat Akun Pengajar"
       description="Tautkan anggota tim ke akun login baru. Pengajar akan diminta mengubah password sementara pada login pertama."
       successMessage="Akun pengajar berhasil dibuat."
+      onSuccess={() => {
+        onSuccessCreated?.({
+          name: selectedMember?.fullName ?? "",
+          nickname: selectedMember?.nickname,
+          username,
+          password,
+          phone,
+          isReset: false,
+        });
+      }}
       action={createPengajarUserAction}
     >
       <div className="space-y-2">
@@ -242,8 +299,11 @@ function AddPengajarDialog({
           name="teamMemberId"
           value={effectiveMemberId}
           onChange={(e) => {
-            setSelectedMemberId(e.target.value);
+            const nextId = e.target.value;
+            setSelectedMemberId(nextId);
             setCustomUsername(null);
+            const found = teamMembers.find((m) => m.id === nextId);
+            setPhone(found?.phone ?? "");
           }}
           className="h-9 w-full rounded-md border-2 border-input bg-card px-3 text-sm font-medium shadow-[var(--shadow-brutal-sm)] outline-none focus-visible:border-ring"
           required
@@ -255,6 +315,22 @@ function AddPengajarDialog({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="phone" className="text-xs font-bold">
+          Nomor Kontak / WhatsApp
+        </Label>
+        <Input
+          id="phone"
+          name="phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="08xxxxxxxxxx"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          Nomor WhatsApp untuk pengiriman kredensial login langsung ke pengajar.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between text-xs pt-1">
@@ -330,7 +406,7 @@ function AddPengajarDialog({
             Acak Ulang
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
             id="initialPassword"
             name="initialPassword"
@@ -339,17 +415,29 @@ function AddPengajarDialog({
             required
             className="font-mono font-bold"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCopyCredentials}
-            title="Salin Kredensial untuk dikirimkan"
-            className="shrink-0 flex items-center gap-1.5 px-3 text-xs font-bold"
-          >
-            <Copy className="size-3.5" />
-            Salin
-          </Button>
+          <div className="flex gap-1.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopyCredentials}
+              title="Salin Kredensial untuk dikirimkan"
+              className="flex items-center gap-1.5 px-3 text-xs font-bold"
+            >
+              <Copy className="size-3.5" />
+              Salin
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSendWhatsApp}
+              title="Kirim kredensial via WhatsApp"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 px-3 text-xs border-2 border-border shadow-[var(--shadow-brutal-sm)]"
+            >
+              <MessageCircle className="size-3.5" />
+              Kirim WA
+            </Button>
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
           Pengajar akan diminta mengganti password ini saat pertama kali login.
@@ -366,15 +454,36 @@ export function PengajarRowActions({
     id: string;
     username: string;
     name: string;
+    phone?: string | null;
     isActive: boolean;
     mustChangePassword: boolean;
   };
 }) {
   const [resetOpen, setResetOpen] = useState(false);
   const [activeOpen, setActiveOpen] = useState(false);
+  const [resetSuccessData, setResetSuccessData] =
+    useState<CredentialSuccessData | null>(null);
 
   return (
     <div className="flex justify-end gap-1">
+      {pengajar.phone ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            window.open(
+              buildWhatsAppLink(pengajar.phone, ""),
+              "_blank",
+              "noopener,noreferrer",
+            );
+          }}
+          aria-label={`Chat WhatsApp ${pengajar.name}`}
+          title={`Chat ${pengajar.name} via WhatsApp`}
+        >
+          <MessageCircle className="size-4 text-emerald-600" />
+        </Button>
+      ) : null}
+
       <Button
         variant="ghost"
         size="sm"
@@ -407,8 +516,17 @@ export function PengajarRowActions({
           open={resetOpen}
           onOpenChange={setResetOpen}
           pengajar={pengajar}
+          onSuccessReset={(data) => setResetSuccessData(data)}
         />
       ) : null}
+
+      <CredentialSuccessDialog
+        open={Boolean(resetSuccessData)}
+        onOpenChange={(next) => {
+          if (!next) setResetSuccessData(null);
+        }}
+        data={resetSuccessData}
+      />
 
       {activeOpen ? (
         <ConfirmDialog
@@ -438,6 +556,7 @@ function ResetPengajarPasswordDialog({
   open,
   onOpenChange,
   pengajar,
+  onSuccessReset,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -445,16 +564,39 @@ function ResetPengajarPasswordDialog({
     id: string;
     username: string;
     name: string;
+    phone?: string | null;
   };
+  onSuccessReset?: (data: CredentialSuccessData) => void;
 }) {
   const [tempPassword, setTempPassword] = useState(() =>
     generateTemporaryPassword(),
   );
 
   const handleCopyResetPassword = () => {
-    const text = `Assalamu'alaikum ${pengajar.name},\nPassword akun Tazkia Mengajar kamu telah direset:\n\nUsername: ${pengajar.username}\nPassword Sementara Baru: ${tempPassword}\n\nSilakan login dan kamu akan diminta mengganti password baru.`;
+    const text = buildPasswordResetMessage({
+      fullName: pengajar.name,
+      username: pengajar.username,
+      temporaryPassword: tempPassword,
+    });
     navigator.clipboard.writeText(text);
     toast.success("Password baru disalin ke clipboard!");
+  };
+
+  const handleSendWhatsApp = () => {
+    const text = buildPasswordResetMessage({
+      fullName: pengajar.name,
+      username: pengajar.username,
+      temporaryPassword: tempPassword,
+    });
+    const link = buildWhatsAppLink(pengajar.phone, text);
+    if (!pengajar.phone) {
+      toast.info(
+        "Nomor kontak pengajar belum terdaftar. Silakan pilih kontak secara manual di WhatsApp.",
+      );
+    } else {
+      toast.success("Membuka WhatsApp ke pengajar...");
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
   };
 
   const handleRegenerateResetPassword = () => {
@@ -470,6 +612,15 @@ function ResetPengajarPasswordDialog({
       title={`Reset Password — ${pengajar.name}`}
       description="Set password sementara baru. Pengajar akan diwajibkan mengubah password ini saat login berikutnya."
       successMessage="Password berhasil direset."
+      onSuccess={() => {
+        onSuccessReset?.({
+          name: pengajar.name,
+          username: pengajar.username,
+          password: tempPassword,
+          phone: pengajar.phone,
+          isReset: true,
+        });
+      }}
       action={(_prev, formData) =>
         resetPengajarPasswordAction(pengajar.id, formData)
       }
@@ -488,7 +639,7 @@ function ResetPengajarPasswordDialog({
             Acak Ulang
           </button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Input
             id="temporaryPassword"
             name="temporaryPassword"
@@ -497,17 +648,29 @@ function ResetPengajarPasswordDialog({
             required
             className="font-mono font-bold"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCopyResetPassword}
-            title="Salin Password Baru"
-            className="shrink-0 flex items-center gap-1.5 px-3 text-xs font-bold"
-          >
-            <Copy className="size-3.5" />
-            Salin
-          </Button>
+          <div className="flex gap-1.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopyResetPassword}
+              title="Salin Password Baru"
+              className="flex items-center gap-1.5 px-3 text-xs font-bold"
+            >
+              <Copy className="size-3.5" />
+              Salin
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSendWhatsApp}
+              title="Kirim Password Baru via WhatsApp"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 px-3 text-xs border-2 border-border shadow-[var(--shadow-brutal-sm)]"
+            >
+              <MessageCircle className="size-3.5" />
+              Kirim WA
+            </Button>
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
           Minimal 8 karakter. Pengajar wajib menggantinya saat login.

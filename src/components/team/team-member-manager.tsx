@@ -5,6 +5,7 @@ import {
   Archive,
   ArchiveRestore,
   Copy,
+  MessageCircle,
   Pencil,
   Plus,
   RefreshCw,
@@ -36,6 +37,14 @@ import {
   generateTemporaryPassword,
 } from "@/lib/auth/credentials-generator";
 import {
+  buildLoginCredentialsMessage,
+  buildWhatsAppLink,
+} from "@/lib/whatsapp";
+import {
+  CredentialSuccessDialog,
+  type CredentialSuccessData,
+} from "@/components/common/credential-success-dialog";
+import {
   createTeamMemberAction,
   deleteTeamMemberAction,
   setTeamMemberActiveAction,
@@ -54,6 +63,9 @@ export interface TeamMemberRow {
 
 export function AddTeamMemberButton() {
   const [open, setOpen] = useState(false);
+  const [createdData, setCreatedData] = useState<CredentialSuccessData | null>(
+    null,
+  );
 
   return (
     <>
@@ -61,7 +73,20 @@ export function AddTeamMemberButton() {
         <Plus className="size-4" />
         Tambah Anggota
       </Button>
-      {open ? <TeamMemberFormDialog open={open} onOpenChange={setOpen} /> : null}
+      {open ? (
+        <TeamMemberFormDialog
+          open={open}
+          onOpenChange={setOpen}
+          onSuccessCreated={(data) => setCreatedData(data)}
+        />
+      ) : null}
+      <CredentialSuccessDialog
+        open={Boolean(createdData)}
+        onOpenChange={(next) => {
+          if (!next) setCreatedData(null);
+        }}
+        data={createdData}
+      />
     </>
   );
 }
@@ -99,6 +124,20 @@ export function TeamMemberRowActions({ member }: { member: TeamMemberRow }) {
               </>
             )}
           </DropdownMenuItem>
+          {member.phone ? (
+            <DropdownMenuItem
+              onClick={() => {
+                window.open(
+                  buildWhatsAppLink(member.phone, ""),
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }}
+            >
+              <MessageCircle className="size-4 text-emerald-600" />
+              Chat WhatsApp
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             variant="destructive"
             onClick={() => setDeleteOpen(true)}
@@ -156,15 +195,18 @@ function TeamMemberFormDialog({
   open,
   onOpenChange,
   member,
+  onSuccessCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   member?: TeamMemberRow;
+  onSuccessCreated?: (data: CredentialSuccessData) => void;
 }) {
   const isEdit = Boolean(member);
 
   const [fullName, setFullName] = useState(member?.fullName ?? "");
   const [nickname, setNickname] = useState(member?.nickname ?? "");
+  const [phone, setPhone] = useState(member?.phone ?? "");
   const [createAccount, setCreateAccount] = useState(true);
   const [isFounder, setIsFounder] = useState(false);
   const [customUsername, setCustomUsername] = useState<string | null>(null);
@@ -177,10 +219,32 @@ function TeamMemberFormDialog({
   const isUsernameEdited = customUsername !== null;
 
   const handleCopyCredentials = () => {
-    const displayName = nickname.trim() || fullName.trim() || "Pengajar";
-    const text = `Assalamu'alaikum ${displayName},\nAkun Tazkia Mengajar kamu sudah dibuatkan:\n\nUsername: ${username}\nPassword Sementara: ${password}\n\nSilakan login dan kamu akan diminta mengganti password baru saat pertama kali login.`;
+    const text = buildLoginCredentialsMessage({
+      fullName,
+      nickname,
+      username,
+      temporaryPassword: password,
+    });
     navigator.clipboard.writeText(text);
     toast.success("Kredensial login disalin ke clipboard!");
+  };
+
+  const handleSendWhatsApp = () => {
+    const text = buildLoginCredentialsMessage({
+      fullName,
+      nickname,
+      username,
+      temporaryPassword: password,
+    });
+    const link = buildWhatsAppLink(phone, text);
+    if (!phone.trim()) {
+      toast.info(
+        "Nomor kontak belum diisi. Anda dapat memilih kontak secara manual di WhatsApp.",
+      );
+    } else {
+      toast.success("Membuka WhatsApp ke relawan pengajar...");
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
   };
 
   const handleRegeneratePassword = () => {
@@ -201,6 +265,18 @@ function TeamMemberFormDialog({
       title={isEdit ? "Ubah Anggota Tim" : "Tambah Anggota Tim"}
       description="Pengajar, pembimbing, dan anggota tim dicatat sebagai satu daftar."
       successMessage={isEdit ? "Anggota diperbarui." : "Anggota ditambahkan."}
+      onSuccess={() => {
+        if (!isEdit && createAccount) {
+          onSuccessCreated?.({
+            name: fullName,
+            nickname,
+            username,
+            password,
+            phone,
+            isReset: false,
+          });
+        }
+      }}
       action={isEdit ? updateTeamMemberAction : createTeamMemberAction}
     >
       {member ? <input type="hidden" name="id" value={member.id} /> : null}
@@ -229,9 +305,12 @@ function TeamMemberFormDialog({
       />
       <TextField
         name="phone"
-        label="Nomor kontak"
+        label="Nomor kontak / WhatsApp"
         defaultValue={member?.phone}
+        value={isEdit ? undefined : phone}
+        onChange={isEdit ? undefined : (e) => setPhone(e.target.value)}
         placeholder="08xxxxxxxxxx"
+        hint="Gunakan nomor WhatsApp aktif untuk pengiriman kredensial akun."
       />
       <TextAreaField name="notes" label="Catatan" defaultValue={member?.notes} />
       <ActiveField defaultChecked={member?.isActive ?? true} />
@@ -331,7 +410,7 @@ function TeamMemberFormDialog({
                     Acak Ulang
                   </button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     id="initialPassword"
                     name="initialPassword"
@@ -340,17 +419,29 @@ function TeamMemberFormDialog({
                     required={createAccount}
                     className="font-mono font-bold"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyCredentials}
-                    title="Salin Kredensial untuk dikirimkan"
-                    className="shrink-0 flex items-center gap-1.5 px-3 text-xs font-bold"
-                  >
-                    <Copy className="size-3.5" />
-                    Salin
-                  </Button>
+                  <div className="flex gap-1.5 shrink-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyCredentials}
+                      title="Salin Kredensial untuk dikirimkan"
+                      className="flex items-center gap-1.5 px-3 text-xs font-bold"
+                    >
+                      <Copy className="size-3.5" />
+                      Salin
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSendWhatsApp}
+                      title="Kirim kredensial via WhatsApp"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 px-3 text-xs border-2 border-border shadow-[var(--shadow-brutal-sm)]"
+                    >
+                      <MessageCircle className="size-3.5" />
+                      Kirim WA
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Pengajar akan diminta mengganti password ini saat pertama kali login.

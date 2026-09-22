@@ -15,6 +15,7 @@ import { fail, fromZodError, handleUnexpected, ok } from "./types";
 import type { ActionResult } from "./types";
 
 const SETTINGS_PATH = "/pengaturan";
+const TIM_PATH = "/tim";
 
 export async function createAdminAction(
   _prev: ActionResult | null,
@@ -67,8 +68,10 @@ export async function createPengajarUserAction(
 ): Promise<ActionResult> {
   await requireAdmin();
 
+  const phoneVal = formData.get("phone");
   const parsed = createPengajarUserSchema.safeParse({
     teamMemberId: formData.get("teamMemberId"),
+    phone: typeof phoneVal === "string" ? phoneVal : undefined,
     username: formData.get("username"),
     initialPassword: formData.get("initialPassword"),
   });
@@ -89,18 +92,28 @@ export async function createPengajarUserAction(
       return fail("Anggota tim ini sudah memiliki akun pengguna.");
     }
 
-    await prisma.user.create({
-      data: {
-        username: parsed.data.username,
-        name: teamMember.fullName,
-        passwordHash: await hashPassword(parsed.data.initialPassword),
-        role: "PENGAJAR",
-        mustChangePassword: true,
-        teamMemberId: teamMember.id,
-      },
+    await prisma.$transaction(async (tx) => {
+      if (parsed.data.phone !== undefined) {
+        await tx.teamMember.update({
+          where: { id: teamMember.id },
+          data: { phone: parsed.data.phone.trim() || null },
+        });
+      }
+
+      await tx.user.create({
+        data: {
+          username: parsed.data.username,
+          name: teamMember.fullName,
+          passwordHash: await hashPassword(parsed.data.initialPassword),
+          role: "PENGAJAR",
+          mustChangePassword: true,
+          teamMemberId: teamMember.id,
+        },
+      });
     });
 
     revalidatePath(SETTINGS_PATH);
+    revalidatePath(TIM_PATH);
     return ok();
   } catch (error) {
     if (

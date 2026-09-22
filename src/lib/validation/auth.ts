@@ -51,6 +51,7 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 export const createPengajarUserSchema = z.object({
   teamMemberId: z.string().min(1, "Anggota tim wajib dipilih."),
+  phone: z.string().trim().max(32, "Nomor kontak terlalu panjang.").optional(),
   username: z
     .string()
     .trim()

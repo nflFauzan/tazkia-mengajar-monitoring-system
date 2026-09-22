@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Users } from "lucide-react";
+import { MessageCircle, Users } from "lucide-react";
+
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 import {
   ListSearch,
@@ -125,11 +127,13 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                   <TableCell className="hidden lg:table-cell">
                     {member.phone ? (
                       <a
-                        href={`https://wa.me/${member.phone.replace(/\D/g, "")}`}
+                        href={buildWhatsAppLink(member.phone, "")}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline font-mono text-xs"
+                        className="inline-flex items-center gap-1 font-mono text-xs text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                        title={`Hubungi ${member.fullName} via WhatsApp`}
                       >
+                        <MessageCircle className="size-3" />
                         {member.phone}
                       </a>
                     ) : (

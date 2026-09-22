@@ -33,6 +33,7 @@ interface FormDialogProps {
   description?: string;
   submitLabel?: string;
   successMessage: string;
+  onSuccess?: () => void;
   action: (
     prev: ActionResult | null,
     formData: FormData,
@@ -57,6 +58,7 @@ export function FormDialog({
   description,
   submitLabel = "Simpan",
   successMessage,
+  onSuccess,
   action,
   children,
 }: FormDialogProps) {
@@ -66,10 +68,11 @@ export function FormDialog({
   useEffect(() => {
     if (state?.ok) {
       toast.success(successMessage);
+      onSuccess?.();
       onOpenChange(false);
       formRef.current?.reset();
     }
-  }, [state, successMessage, onOpenChange]);
+  }, [state, successMessage, onSuccess, onOpenChange]);
 
   const errorMessage = state && !state.ok ? state.error : null;
   const fieldErrors = state && !state.ok ? state.fieldErrors : undefined;
