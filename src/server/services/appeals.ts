@@ -158,7 +158,7 @@ export async function getPendingAppeals(): Promise<AttendanceAppealItem[]> {
   try {
     const { prisma } = await import("@/lib/db/prisma");
 
-    if (!prisma || !("attendanceAppeal" in prisma) || !prisma.attendanceAppeal) {
+    if (!prisma?.attendanceAppeal) {
       return [];
     }
 

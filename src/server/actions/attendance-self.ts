@@ -79,16 +79,27 @@ export async function selfCheckInAction(
       if (existingActivity) {
         targetActivityId = existingActivity.id;
       } else {
-        // Create new activity for today based on the schedule
         const schedule = await prisma.schedule.findUnique({
           where: { id: input.scheduleId },
           include: {
             location: true,
+            teamMembers: true,
           },
         });
 
         if (!schedule) {
           return fail("Jadwal kegiatan tidak ditemukan.");
+        }
+
+        // If schedule has assigned team members, only assigned members or admin can check in.
+        // If teamMembers is empty (0 dipilih), it is open to all active team members.
+        if (user.role !== "ADMIN" && schedule.teamMembers.length > 0) {
+          const isAssigned = schedule.teamMembers.some(
+            (tm) => tm.teamMemberId === teamMemberId,
+          );
+          if (!isAssigned) {
+            return fail("Anda tidak terdaftar pada jadwal kegiatan ini.");
+          }
         }
 
         const newActivity = await prisma.activity.create({
@@ -113,6 +124,29 @@ export async function selfCheckInAction(
 
     if (!targetActivityId) {
       return fail("Kegiatan tidak ditemukan.");
+    }
+
+    const activity = await prisma.activity.findUnique({
+      where: { id: targetActivityId },
+      include: {
+        schedule: {
+          include: { teamMembers: true },
+        },
+      },
+    });
+
+    if (!activity) {
+      return fail("Kegiatan tidak ditemukan.");
+    }
+
+    if (user.role !== "ADMIN") {
+      if (
+        activity.schedule &&
+        activity.schedule.teamMembers.length > 0 &&
+        !activity.schedule.teamMembers.some((tm) => tm.teamMemberId === teamMemberId)
+      ) {
+        return fail("Anda tidak terdaftar pada kegiatan ini.");
+      }
     }
 
     // Upsert the team member attendance record

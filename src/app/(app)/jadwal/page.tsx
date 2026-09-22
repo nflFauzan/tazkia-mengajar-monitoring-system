@@ -175,8 +175,13 @@ export default async function JadwalPage({
             <TableBody>
               {schedules.map((schedule) => (
                 <TableRow key={schedule.id}>
-                  <TableCell className="font-medium">
-                    {schedule.title}
+                  <TableCell>
+                    <div className="font-medium">{schedule.title}</div>
+                    {schedule.teamMembers.length === 0 ? (
+                      <span className="text-[11px] text-muted-foreground block">
+                        Terbuka untuk semua relawan
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell>{schedule.location.name}</TableCell>
                   <TableCell>

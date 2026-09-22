@@ -58,12 +58,14 @@ interface SelfAttendancePanelProps {
     appealReason?: string | null;
     appealAdminNote?: string | null;
   }>;
+  userRole?: string;
 }
 
 export function SelfAttendancePanel({
   todaySessions,
   upcomingSessions,
   recentHistory,
+  userRole = "PENGAJAR",
 }: SelfAttendancePanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -302,6 +304,8 @@ export function SelfAttendancePanel({
                       locationName={session.locationName}
                       dateStr={session.dateStr}
                       studentAttendanceCount={session.studentAttendanceCount}
+                      disabled={userRole !== "ADMIN" && session.currentAttendance !== "HADIR"}
+                      disabledTooltip="Silakan lakukan presensi 'Hadir Sekarang' terlebih dahulu untuk mengisi absensi murid."
                     />
 
                     {session.activityId ? (

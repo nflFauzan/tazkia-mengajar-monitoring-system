@@ -1,10 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   calculateHoursUntilStart,
   getActivityStartInstant,
   getWibDateString,
 } from "./attendance-self";
+
+vi.mock("@/lib/db/prisma", () => ({
+  prisma: {
+    activity: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    student: {
+      findMany: vi.fn(),
+    },
+  },
+}));
 
 describe("attendance-self service logic", () => {
   it("formats date in WIB timezone (Asia/Jakarta)", () => {
@@ -75,5 +87,139 @@ describe("attendance-self service logic", () => {
         [],
       ),
     ).rejects.toThrow("Format sesi tidak valid.");
+  });
+
+  describe("strict student attendance gate (HADIR required)", () => {
+    it("blocks non-admin if teacher is not marked HADIR in activity", async () => {
+      const { getActivityStudentsForAttendance } = await import("./attendance-self");
+      const { prisma } = await import("@/lib/db/prisma");
+
+      vi.spyOn(prisma.activity, "findUnique").mockResolvedValueOnce({
+        id: "act-1",
+        locationId: "loc-1",
+        partner: "Mitra A",
+        date: new Date("2026-09-23T00:00:00Z"),
+        startTime: "08:00",
+        endTime: "10:00",
+        beneficiaryCount: 0,
+        location: { id: "loc-1", name: "Rumah Belajar", partner: "Mitra A" },
+        teamMembers: [
+          { teamMemberId: "tm-1", attendance: "IZIN" },
+        ],
+        schedule: null,
+      } as never);
+
+      await expect(
+        getActivityStudentsForAttendance("act-1", {
+          id: "user-1",
+          role: "PENGAJAR",
+          teamMemberId: "tm-1",
+        }),
+      ).rejects.toThrow(
+        "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat melihat atau mengisi absensi murid.",
+      );
+    });
+
+    it("allows non-admin if teacher is marked HADIR in activity", async () => {
+      const { getActivityStudentsForAttendance } = await import("./attendance-self");
+      const { prisma } = await import("@/lib/db/prisma");
+
+      vi.spyOn(prisma.activity, "findUnique").mockResolvedValueOnce({
+        id: "act-1",
+        locationId: "loc-1",
+        partner: "Mitra A",
+        date: new Date("2026-09-23T00:00:00Z"),
+        startTime: "08:00",
+        endTime: "10:00",
+        beneficiaryCount: 0,
+        location: { id: "loc-1", name: "Rumah Belajar", partner: "Mitra A" },
+        teamMembers: [
+          { teamMemberId: "tm-1", attendance: "HADIR" },
+        ],
+        schedule: null,
+      } as never);
+
+      vi.spyOn(prisma.student, "findMany").mockResolvedValueOnce([
+        {
+          id: "student-1",
+          fullName: "Ahmad",
+          studentGroup: { id: "grp-1", name: "Kelompok A" },
+          attendances: [{ attendance: "HADIR", note: null }],
+        },
+      ] as never);
+
+      const result = await getActivityStudentsForAttendance("act-1", {
+        id: "user-1",
+        role: "PENGAJAR",
+        teamMemberId: "tm-1",
+      });
+
+      expect(result.students).toHaveLength(1);
+      expect(result.students[0].fullName).toBe("Ahmad");
+    });
+
+    it("allows admin even if not checked in or not in teamMembers", async () => {
+      const { getActivityStudentsForAttendance } = await import("./attendance-self");
+      const { prisma } = await import("@/lib/db/prisma");
+
+      vi.spyOn(prisma.activity, "findUnique").mockResolvedValueOnce({
+        id: "act-1",
+        locationId: "loc-1",
+        partner: "Mitra A",
+        date: new Date("2026-09-23T00:00:00Z"),
+        startTime: "08:00",
+        endTime: "10:00",
+        beneficiaryCount: 0,
+        location: { id: "loc-1", name: "Rumah Belajar", partner: "Mitra A" },
+        teamMembers: [],
+        schedule: null,
+      } as never);
+
+      vi.spyOn(prisma.student, "findMany").mockResolvedValueOnce([
+        {
+          id: "student-1",
+          fullName: "Ahmad",
+          studentGroup: { id: "grp-1", name: "Kelompok A" },
+          attendances: [],
+        },
+      ] as never);
+
+      const result = await getActivityStudentsForAttendance("act-1", {
+        id: "admin-1",
+        role: "ADMIN",
+        teamMemberId: null,
+      });
+
+      expect(result.students).toHaveLength(1);
+    });
+
+    it("blocks non-admin from saving student attendance if not HADIR", async () => {
+      const { saveStudentAttendanceForSession } = await import("./attendance-self");
+      const { prisma } = await import("@/lib/db/prisma");
+
+      vi.spyOn(prisma.activity, "findUnique").mockResolvedValueOnce({
+        id: "act-1",
+        locationId: "loc-1",
+        beneficiaryCount: 0,
+        teamMembers: [
+          { teamMemberId: "tm-1", attendance: "SAKIT" },
+        ],
+        schedule: null,
+      } as never);
+
+      await expect(
+        saveStudentAttendanceForSession(
+          "act-1",
+          {
+            id: "user-1",
+            role: "PENGAJAR",
+            teamMemberId: "tm-1",
+          },
+          [{ studentId: "s-1", attendance: "HADIR" }],
+        ),
+      ).rejects.toThrow(
+        "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat menyimpan absensi murid.",
+      );
+    });
   });
 });

@@ -427,6 +427,7 @@ function ScheduleDialog({
             options={options.teamMembers}
             selected={form.teamMemberIds}
             onToggle={(id) => toggleId("teamMemberIds", id)}
+            hint="Opsional. Jika dikosongkan (0 dipilih), jadwal ini terbuka untuk seluruh relawan pengajar aktif."
           />
 
           <CheckboxGroup
@@ -490,22 +491,27 @@ function CheckboxGroup({
   options,
   selected,
   onToggle,
+  hint,
 }: {
   label: string;
   options: Option[];
   selected: string[];
   onToggle: (id: string) => void;
+  hint?: React.ReactNode;
 }) {
   if (options.length === 0) return null;
 
   return (
-    <fieldset className="space-y-2">
+    <fieldset className="space-y-1.5">
       <legend className="text-sm font-medium">
         {label}{" "}
         <span className="text-muted-foreground font-normal">
           ({selected.length} dipilih)
         </span>
       </legend>
+      {hint ? (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      ) : null}
       <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
         {options.map((option) => (
           <label

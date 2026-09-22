@@ -81,6 +81,11 @@ export async function getPengajarAttendanceSessions(
             teamMembers: { some: { teamMemberId } },
           },
         },
+        {
+          schedule: {
+            teamMembers: { none: {} },
+          },
+        },
       ],
     },
     include: {
@@ -134,11 +139,14 @@ export async function getPengajarAttendanceSessions(
     });
   }
 
-  // 2. Check schedules where this team member is assigned
+  // 2. Check schedules where this team member is assigned OR open schedules (0 team members assigned)
   const memberSchedules = await prisma.schedule.findMany({
     where: {
       isActive: true,
-      teamMembers: { some: { teamMemberId } },
+      OR: [
+        { teamMembers: { some: { teamMemberId } } },
+        { teamMembers: { none: {} } },
+      ],
     },
     include: {
       location: { select: { name: true, partner: true } },
@@ -342,7 +350,7 @@ export async function getPengajarAttendanceSessions(
 
   // Fetch appeals separately to avoid relying on nested relation on Activity
   const appeals =
-    activityIds.length > 0 && "attendanceAppeal" in prisma
+    activityIds.length > 0 && Boolean(prisma?.attendanceAppeal)
       ? await prisma.attendanceAppeal.findMany({
           where: {
             teamMemberId,
@@ -427,7 +435,7 @@ export async function getActivityStudentsForAttendance(
       where: { id: activityId },
       include: {
         location: { select: { id: true, name: true, partner: true } },
-        teamMembers: { select: { teamMemberId: true } },
+        teamMembers: { select: { teamMemberId: true, attendance: true } },
         schedule: {
           select: {
             teamMembers: { select: { teamMemberId: true } },
@@ -444,11 +452,13 @@ export async function getActivityStudentsForAttendance(
       if (!user.teamMemberId) {
         throw new Error("Akun Anda belum terhubung dengan data personil tim.");
       }
-      const isAssigned =
-        activity.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId) ||
-        activity.schedule?.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId);
-      if (!isAssigned) {
-        throw new Error("Anda tidak memiliki akses absensi ke kegiatan ini.");
+      const userRecord = activity.teamMembers.find(
+        (tm) => tm.teamMemberId === user.teamMemberId,
+      );
+      if (!userRecord || userRecord.attendance !== "HADIR") {
+        throw new Error(
+          "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat melihat atau mengisi absensi murid.",
+        );
       }
     }
 
@@ -504,7 +514,7 @@ export async function getActivityStudentsForAttendance(
       },
       include: {
         location: { select: { id: true, name: true, partner: true } },
-        teamMembers: { select: { teamMemberId: true } },
+        teamMembers: { select: { teamMemberId: true, attendance: true } },
         schedule: {
           select: {
             teamMembers: { select: { teamMemberId: true } },
@@ -518,11 +528,13 @@ export async function getActivityStudentsForAttendance(
         if (!user.teamMemberId) {
           throw new Error("Akun Anda belum terhubung dengan data personil tim.");
         }
-        const isAssigned =
-          existingActivity.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId) ||
-          existingActivity.schedule?.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId);
-        if (!isAssigned) {
-          throw new Error("Anda tidak memiliki akses absensi ke kegiatan ini.");
+        const userRecord = existingActivity.teamMembers.find(
+          (tm) => tm.teamMemberId === user.teamMemberId,
+        );
+        if (!userRecord || userRecord.attendance !== "HADIR") {
+          throw new Error(
+            "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat melihat atau mengisi absensi murid.",
+          );
         }
       }
 
@@ -568,6 +580,13 @@ export async function getActivityStudentsForAttendance(
       };
     }
 
+    // If activity does not exist yet and user is not admin, they must check in first
+    if (user.role !== "ADMIN") {
+      throw new Error(
+        "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat melihat atau mengisi absensi murid.",
+      );
+    }
+
     const schedule = await prisma.schedule.findUnique({
       where: { id: scheduleId },
       include: {
@@ -578,18 +597,6 @@ export async function getActivityStudentsForAttendance(
 
     if (!schedule) {
       throw new Error("Jadwal kegiatan tidak ditemukan.");
-    }
-
-    if (user.role !== "ADMIN") {
-      if (!user.teamMemberId) {
-        throw new Error("Akun Anda belum terhubung dengan data personil tim.");
-      }
-      const isAssigned = schedule.teamMembers.some(
-        (tm) => tm.teamMemberId === user.teamMemberId,
-      );
-      if (!isAssigned) {
-        throw new Error("Anda tidak memiliki akses absensi ke jadwal ini.");
-      }
     }
 
     locationId = schedule.locationId;
@@ -655,7 +662,7 @@ export async function saveStudentAttendanceForSession(
     const activity = await prisma.activity.findUnique({
       where: { id: targetActivityId },
       include: {
-        teamMembers: { select: { teamMemberId: true } },
+        teamMembers: { select: { teamMemberId: true, attendance: true } },
         schedule: { select: { teamMembers: { select: { teamMemberId: true } } } },
       },
     });
@@ -668,11 +675,13 @@ export async function saveStudentAttendanceForSession(
       if (!user.teamMemberId) {
         throw new Error("Akun Anda belum terhubung dengan data personil tim.");
       }
-      const isAssigned =
-        activity.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId) ||
-        activity.schedule?.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId);
-      if (!isAssigned) {
-        throw new Error("Anda tidak memiliki akses absensi ke kegiatan ini.");
+      const userRecord = activity.teamMembers.find(
+        (tm) => tm.teamMemberId === user.teamMemberId,
+      );
+      if (!userRecord || userRecord.attendance !== "HADIR") {
+        throw new Error(
+          "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat menyimpan absensi murid.",
+        );
       }
     }
 
@@ -687,10 +696,29 @@ export async function saveStudentAttendanceForSession(
         date: parseDateInput(dateStr),
       },
       include: {
-        teamMembers: { select: { teamMemberId: true } },
+        teamMembers: { select: { teamMemberId: true, attendance: true } },
         schedule: { select: { teamMembers: { select: { teamMemberId: true } } } },
       },
     });
+
+    if (user.role !== "ADMIN") {
+      if (!user.teamMemberId) {
+        throw new Error("Akun Anda belum terhubung dengan data personil tim.");
+      }
+      if (!activity) {
+        throw new Error(
+          "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat menyimpan absensi murid.",
+        );
+      }
+      const userRecord = activity.teamMembers.find(
+        (tm) => tm.teamMemberId === user.teamMemberId,
+      );
+      if (!userRecord || userRecord.attendance !== "HADIR") {
+        throw new Error(
+          "Anda harus melakukan presensi hadir terlebih dahulu sebelum dapat menyimpan absensi murid.",
+        );
+      }
+    }
 
     if (!activity) {
       const schedule = await prisma.schedule.findUnique({
@@ -703,18 +731,6 @@ export async function saveStudentAttendanceForSession(
 
       if (!schedule) {
         throw new Error("Jadwal kegiatan tidak ditemukan.");
-      }
-
-      if (user.role !== "ADMIN") {
-        if (!user.teamMemberId) {
-          throw new Error("Akun Anda belum terhubung dengan data personil tim.");
-        }
-        const isAssigned = schedule.teamMembers.some(
-          (tm) => tm.teamMemberId === user.teamMemberId,
-        );
-        if (!isAssigned) {
-          throw new Error("Anda tidak memiliki akses absensi ke jadwal ini.");
-        }
       }
 
       activity = await prisma.activity.create({
@@ -732,22 +748,10 @@ export async function saveStudentAttendanceForSession(
           createdById: user.id,
         },
         include: {
-          teamMembers: { select: { teamMemberId: true } },
+          teamMembers: { select: { teamMemberId: true, attendance: true } },
           schedule: { select: { teamMembers: { select: { teamMemberId: true } } } },
         },
       });
-    } else {
-      if (user.role !== "ADMIN") {
-        if (!user.teamMemberId) {
-          throw new Error("Akun Anda belum terhubung dengan data personil tim.");
-        }
-        const isAssigned =
-          activity.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId) ||
-          activity.schedule?.teamMembers.some((tm) => tm.teamMemberId === user.teamMemberId);
-        if (!isAssigned) {
-          throw new Error("Anda tidak memiliki akses absensi ke kegiatan ini.");
-        }
-      }
     }
 
     targetActivityId = activity.id;

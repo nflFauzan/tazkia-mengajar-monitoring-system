@@ -39,6 +39,7 @@ export default async function AbsensiPage() {
         todaySessions={data.todaySessions}
         upcomingSessions={data.upcomingSessions}
         recentHistory={data.recentHistory}
+        userRole={user.role}
       />
     </>
   );

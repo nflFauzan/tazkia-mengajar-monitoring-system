@@ -448,6 +448,8 @@ function PengajarDashboard({
                         locationName={session.locationName}
                         dateStr={session.dateStr}
                         studentAttendanceCount={session.studentAttendanceCount}
+                        disabled={session.currentAttendance !== "HADIR"}
+                        disabledTooltip="Silakan lakukan presensi 'Hadir Sekarang' terlebih dahulu untuk mengisi absensi murid."
                       />
                     </div>
 

@@ -1,3 +1,4 @@
+import { createRequire } from "module";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
@@ -10,13 +11,35 @@ import { PrismaClient } from "@prisma/client";
  * open a new connection pool on every edit, and so that a warm serverless
  * instance reuses the pool it already has.
  */
-function createPrismaClient() {
+function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
     throw new Error(
       "DATABASE_URL is not set. Copy .env.example to .env and fill it in.",
     );
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    try {
+      const req = createRequire(import.meta.url);
+      if (req.cache) {
+        for (const key of Object.keys(req.cache)) {
+          if (key.includes("@prisma") || key.includes(".prisma")) {
+            delete req.cache[key];
+          }
+        }
+      }
+      const { PrismaClient: FreshClient } = req("@prisma/client");
+      const { PrismaPg: FreshAdapter } = req("@prisma/adapter-pg");
+      const adapter = new FreshAdapter({ connectionString });
+      return new FreshClient({
+        adapter,
+        log: ["warn", "error"],
+      });
+    } catch {
+      // Fallback to static import if dynamic require fails
+    }
   }
 
   const adapter = new PrismaPg({ connectionString });
@@ -28,23 +51,42 @@ function createPrismaClient() {
 }
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: ReturnType<typeof createPrismaClient> | undefined;
+  prisma: PrismaClient | undefined;
 };
 
-function getPrismaClient() {
-  const cached = globalForPrisma.prisma;
+export function getPrismaClient(): PrismaClient {
+  let cached = globalForPrisma.prisma;
   if (
     cached &&
     process.env.NODE_ENV === "development" &&
     !("attendanceAppeal" in cached)
   ) {
+    globalForPrisma.prisma = undefined;
+    cached = undefined;
+  }
+
+  if (!globalForPrisma.prisma) {
     globalForPrisma.prisma = createPrismaClient();
   }
-  return globalForPrisma.prisma ?? createPrismaClient();
+
+  return globalForPrisma.prisma;
 }
 
-export const prisma = getPrismaClient();
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrismaClient();
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(client);
+    }
+    return value;
+  },
+  has(_target, prop) {
+    const client = getPrismaClient();
+    return prop in client;
+  },
+});
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = getPrismaClient();
 }

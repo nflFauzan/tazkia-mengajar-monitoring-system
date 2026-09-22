@@ -69,6 +69,8 @@ interface StudentAttendanceDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   studentAttendanceCount?: number;
+  disabled?: boolean;
+  disabledTooltip?: string;
 }
 
 export function StudentAttendanceDialog({
@@ -80,6 +82,8 @@ export function StudentAttendanceDialog({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   studentAttendanceCount = 0,
+  disabled = false,
+  disabledTooltip,
 }: StudentAttendanceDialogProps) {
   const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -126,6 +130,7 @@ export function StudentAttendanceDialog({
   }
 
   function handleOpen() {
+    if (disabled) return;
     setIsOpen(true);
     loadData();
   }
@@ -221,8 +226,12 @@ export function StudentAttendanceDialog({
     <>
       {trigger ? (
         <span
-          onClick={handleOpen}
-          className="inline-flex cursor-pointer"
+          onClick={disabled ? undefined : handleOpen}
+          className={cn(
+            "inline-flex",
+            disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+          )}
+          title={disabled ? (disabledTooltip ?? "Silakan lakukan presensi 'Hadir Sekarang' terlebih dahulu.") : undefined}
         >
           {trigger}
         </span>
@@ -231,8 +240,10 @@ export function StudentAttendanceDialog({
           type="button"
           variant={studentAttendanceCount > 0 ? "secondary" : "outline"}
           size="sm"
-          onClick={handleOpen}
-          className="gap-1.5"
+          disabled={disabled}
+          title={disabled ? (disabledTooltip ?? "Silakan lakukan presensi 'Hadir Sekarang' terlebih dahulu.") : undefined}
+          onClick={disabled ? undefined : handleOpen}
+          className={cn("gap-1.5", disabled && "cursor-not-allowed opacity-60")}
         >
           <UsersRound
             className={cn(
