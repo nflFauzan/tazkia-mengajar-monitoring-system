@@ -155,40 +155,45 @@ export async function reviewAttendanceAppeal(params: {
 }
 
 export async function getPendingAppeals(): Promise<AttendanceAppealItem[]> {
-  const { prisma } = await import("@/lib/db/prisma");
+  try {
+    const { prisma } = await import("@/lib/db/prisma");
 
-  if (!prisma || !("attendanceAppeal" in prisma) || !prisma.attendanceAppeal) {
+    if (!prisma || !("attendanceAppeal" in prisma) || !prisma.attendanceAppeal) {
+      return [];
+    }
+
+    const rows = await prisma.attendanceAppeal.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        teamMember: { select: { fullName: true } },
+        activity: {
+          select: {
+            date: true,
+            location: { select: { name: true } },
+          },
+        },
+        reviewedBy: { select: { name: true } },
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      activityId: r.activityId,
+      teamMemberId: r.teamMemberId,
+      teamMemberName: r.teamMember.fullName,
+      locationName: r.activity.location.name,
+      activityDate: r.activity.date,
+      proposedAttendance: r.proposedAttendance,
+      reason: r.reason,
+      status: r.status,
+      adminNote: r.adminNote,
+      createdAt: r.createdAt,
+      reviewedAt: r.reviewedAt,
+      reviewerName: r.reviewedBy?.name ?? null,
+    }));
+  } catch (error) {
+    console.error("Failed to load pending appeals:", error);
     return [];
   }
-
-  const rows = await prisma.attendanceAppeal.findMany({
-    where: { status: "PENDING" },
-    orderBy: { createdAt: "desc" },
-    include: {
-      teamMember: { select: { fullName: true } },
-      activity: {
-        select: {
-          date: true,
-          location: { select: { name: true } },
-        },
-      },
-      reviewedBy: { select: { name: true } },
-    },
-  });
-
-  return rows.map((r) => ({
-    id: r.id,
-    activityId: r.activityId,
-    teamMemberId: r.teamMemberId,
-    teamMemberName: r.teamMember.fullName,
-    locationName: r.activity.location.name,
-    activityDate: r.activity.date,
-    proposedAttendance: r.proposedAttendance,
-    reason: r.reason,
-    status: r.status,
-    adminNote: r.adminNote,
-    createdAt: r.createdAt,
-    reviewedAt: r.reviewedAt,
-    reviewerName: r.reviewedBy?.name ?? null,
-  }));
 }

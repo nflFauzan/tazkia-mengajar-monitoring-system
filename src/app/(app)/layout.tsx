@@ -11,14 +11,12 @@ import { prisma } from "@/lib/db/prisma";
  * guarantees a session exists before any child page renders or queries.
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const [user, locations] = await Promise.all([
-    requireUser(),
-    prisma.location.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
+  const user = await requireUser();
+  const locations = await prisma.location.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
 
   return (
     <div className="flex min-h-svh">

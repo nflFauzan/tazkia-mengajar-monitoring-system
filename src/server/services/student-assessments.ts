@@ -63,47 +63,52 @@ export async function saveStudentAssessment(params: {
 export async function getStudentAssessments(
   studentId: string,
 ): Promise<StudentAssessmentItem[]> {
-  const { prisma } = await import("@/lib/db/prisma");
+  try {
+    const { prisma } = await import("@/lib/db/prisma");
 
-  if (!prisma || !("studentAssessment" in prisma) || !prisma.studentAssessment) {
-    return [];
-  }
+    if (!prisma || !("studentAssessment" in prisma) || !prisma.studentAssessment) {
+      return [];
+    }
 
-  const rows = await prisma.studentAssessment.findMany({
-    where: { studentId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      material: {
-        select: {
-          title: true,
-          meetingLabel: true,
-          period: {
-            select: {
-              curriculum: { select: { name: true } },
+    const rows = await prisma.studentAssessment.findMany({
+      where: { studentId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        material: {
+          select: {
+            title: true,
+            meetingLabel: true,
+            period: {
+              select: {
+                curriculum: { select: { name: true } },
+              },
             },
           },
         },
+        assessedBy: { select: { name: true } },
       },
-      assessedBy: { select: { name: true } },
-    },
-  });
+    });
 
-  return rows.map((r) => ({
-    id: r.id,
-    studentId: r.studentId,
-    materialId: r.materialId,
-    materialTitle: r.material
-      ? `${r.material.meetingLabel ? `${r.material.meetingLabel} — ` : ""}${r.material.title}`
-      : null,
-    curriculumName: r.material?.period.curriculum.name ?? null,
-    customTitle: r.customTitle,
-    status: r.status,
-    notes: r.notes,
-    assessedById: r.assessedById,
-    assessedByName: r.assessedBy.name,
-    activityId: r.activityId,
-    createdAt: r.createdAt,
-  }));
+    return rows.map((r) => ({
+      id: r.id,
+      studentId: r.studentId,
+      materialId: r.materialId,
+      materialTitle: r.material
+        ? `${r.material.meetingLabel ? `${r.material.meetingLabel} — ` : ""}${r.material.title}`
+        : null,
+      curriculumName: r.material?.period.curriculum.name ?? null,
+      customTitle: r.customTitle,
+      status: r.status,
+      notes: r.notes,
+      assessedById: r.assessedById,
+      assessedByName: r.assessedBy.name,
+      activityId: r.activityId,
+      createdAt: r.createdAt,
+    }));
+  } catch (error) {
+    console.error("Failed to load student assessments:", error);
+    return [];
+  }
 }
 
 export async function deleteStudentAssessment(
