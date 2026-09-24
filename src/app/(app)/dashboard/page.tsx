@@ -4,7 +4,9 @@ import {
   BookCheck,
   CalendarDays,
   CheckCircle2,
+  Clapperboard,
   ClipboardList,
+  ExternalLink,
   FileText,
   HeartHandshake,
   MapPin,
@@ -34,6 +36,8 @@ import { getPendingAppeals } from "@/server/services/appeals";
 import { AdminAppealsCard } from "@/components/attendance/admin-appeals-card";
 import { StudentAttendanceDialog } from "@/components/attendance/student-attendance-dialog";
 import { OnboardingDialog } from "@/components/common/onboarding-dialog";
+import { getContentIdeas } from "@/server/services/content-ideas";
+import type { ContentIdeaItem } from "@/server/services/content-ideas";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -41,22 +45,27 @@ export default async function DashboardPage() {
   const user = await requireUser();
 
   if (user.role === "PENGAJAR") {
-    const attendanceData = user.teamMemberId
-      ? await getPengajarAttendanceSessions(user.teamMemberId)
-      : null;
+    const [attendanceData, contentIdeas] = await Promise.all([
+      user.teamMemberId
+        ? getPengajarAttendanceSessions(user.teamMemberId)
+        : null,
+      getContentIdeas(),
+    ]);
 
     return (
       <PengajarDashboard
         userId={user.id}
         userName={user.name}
         attendanceData={attendanceData}
+        contentIdeas={contentIdeas}
       />
     );
   }
 
-  const [stats, pendingAppeals] = await Promise.all([
+  const [stats, pendingAppeals, contentIdeas] = await Promise.all([
     getDashboardStats(),
     getPendingAppeals(),
+    getContentIdeas(),
   ]);
 
   return (
@@ -275,6 +284,8 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
+
+      <ContentDashboardWidget ideas={contentIdeas} />
     </>
   );
 }
@@ -283,6 +294,7 @@ function PengajarDashboard({
   userId,
   userName,
   attendanceData,
+  contentIdeas,
 }: {
   userId: string;
   userName: string;
@@ -300,6 +312,7 @@ function PengajarDashboard({
       note: string | null;
     }>;
   } | null;
+  contentIdeas: ContentIdeaItem[];
 }) {
   const todayCount = attendanceData?.todaySessions.length ?? 0;
   const upcomingCount = attendanceData?.upcomingSessions.length ?? 0;
@@ -504,6 +517,99 @@ function PengajarDashboard({
           )}
         </section>
       </div>
+
+      <ContentDashboardWidget ideas={contentIdeas} />
     </>
+  );
+}
+
+function ContentDashboardWidget({ ideas }: { ideas: ContentIdeaItem[] }) {
+  const latestIdeas = ideas.slice(0, 4);
+
+  return (
+    <section className="mt-6" aria-label="Ide & Rencana Konten Medsos">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="font-heading text-lg tracking-tight flex items-center gap-2">
+            <Clapperboard className="size-5 text-primary" />
+            Ide & Rencana Konten Medsos
+          </h2>
+          <p className="text-muted-foreground text-xs">
+            Inspirasi konten bersama dan rencana rekaman video untuk kegiatan relawan.
+          </p>
+        </div>
+        <ButtonLink href="/konten" variant="ghost" size="sm">
+          Buka papan konten
+        </ButtonLink>
+      </div>
+
+      {latestIdeas.length === 0 ? (
+        <div className="rounded-lg border-2 border-dashed border-border bg-card p-6 text-center shadow-[var(--shadow-brutal-sm)]">
+          <p className="text-sm font-medium">Belum ada ide konten atau referensi video yang diusulkan.</p>
+          <p className="text-muted-foreground text-xs mt-1">
+            Punya referensi konten Instagram atau TikTok yang bagus? Bagikan ide Anda agar bisa dieksekusi bersama.
+          </p>
+          <div className="mt-3">
+            <ButtonLink href="/konten" size="sm">
+              <Plus className="size-3.5" />
+              Usulkan Ide Konten
+            </ButtonLink>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {latestIdeas.map((idea) => (
+            <div
+              key={idea.id}
+              className="rounded-lg border-2 border-border bg-card p-3 shadow-[var(--shadow-brutal-sm)] flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <Badge variant="outline" className="text-[10px] font-bold">
+                    {idea.platform}
+                  </Badge>
+                  <span className="text-[10px] font-bold text-muted-foreground">
+                    {idea.status === "IDE"
+                      ? "Ide"
+                      : idea.status === "RENCANA"
+                        ? "Rencana"
+                        : idea.status === "PROSES_EDIT"
+                          ? "Edit"
+                          : "Tayang"}
+                  </span>
+                </div>
+                <p className="font-heading text-sm font-bold leading-snug line-clamp-2">
+                  {idea.title}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Oleh: <strong className="text-foreground">{idea.authorName}</strong>
+                </p>
+              </div>
+
+              <div className="mt-3 pt-2 border-t border-border/40 flex items-center justify-between gap-2">
+                {idea.referenceUrl ? (
+                  <a
+                    href={idea.referenceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                  >
+                    <ExternalLink className="size-3" />
+                    Referensi
+                  </a>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">
+                    {idea.locationName ?? "Umum"}
+                  </span>
+                )}
+                <ButtonLink href="/konten" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]">
+                  Detail
+                </ButtonLink>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

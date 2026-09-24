@@ -2,6 +2,7 @@ import {
   BookCheck,
   BookOpen,
   CalendarDays,
+  Clapperboard,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -73,6 +74,11 @@ export const NAV_ITEMS: NavItem[] = [
     icon: MapPin,
   },
   {
+    label: "Konten Medsos",
+    href: "/konten",
+    icon: Clapperboard,
+  },
+  {
     label: "Laporan",
     href: "/laporan",
     icon: FileText,
@@ -137,6 +143,11 @@ export const PENGAJAR_NAV_ITEMS: NavItem[] = [
     label: "Tempat",
     href: "/tempat",
     icon: MapPin,
+  },
+  {
+    label: "Konten Medsos",
+    href: "/konten",
+    icon: Clapperboard,
   },
   {
     label: "Panduan & SOP",

@@ -73,11 +73,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  activitiesCreated  Activity[]          @relation("ActivityCreatedBy")
-  activitiesUpdated  Activity[]          @relation("ActivityUpdatedBy")
-  reportsCreated     Report[]            @relation("ReportCreatedBy")
-  appealsReviewed    AttendanceAppeal[]  @relation("AppealReviewedBy")
-  assessmentsCreated StudentAssessment[] @relation("AssessmentCreatedBy")
+  activitiesCreated   Activity[]          @relation("ActivityCreatedBy")
+  activitiesUpdated   Activity[]          @relation("ActivityUpdatedBy")
+  reportsCreated      Report[]            @relation("ReportCreatedBy")
+  appealsReviewed     AttendanceAppeal[]  @relation("AppealReviewedBy")
+  assessmentsCreated  StudentAssessment[] @relation("AssessmentCreatedBy")
+  contentIdeasCreated ContentIdea[]       @relation("ContentIdeaAuthor")
 
   @@index([isActive])
   @@index([role])
@@ -103,6 +104,7 @@ model Location {
   studentGroups StudentGroup[]
   schedules     Schedule[]
   activities    Activity[]
+  contentIdeas  ContentIdea[]
 
   @@index([isActive])
   @@index([name])
@@ -516,3 +518,49 @@ model StudentAssessment {
   @@index([assessedById])
   @@map("student_assessments")
 }
+
+// ---------------------------------------------------------------------------
+// Social Media Content Idea & Collaborative Reference Board
+// ---------------------------------------------------------------------------
+
+enum ContentPlatform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  LAINNYA
+}
+
+enum ContentStatus {
+  IDE
+  RENCANA
+  PROSES_EDIT
+  TAYANG
+}
+
+model ContentIdea {
+  id           String          @id @default(cuid())
+  title        String
+  platform     ContentPlatform @default(INSTAGRAM)
+  contentType  String?         // Reels, Carousel, Story, Video, dll.
+  referenceUrl String?         // Link contoh video IG/TikTok/YT
+  description  String          // Konsep atau ide cerita
+  status       ContentStatus   @default(IDE)
+  targetDate   DateTime?       // Perkiraan tanggal eksekusi/tayang
+
+  locationId   String?
+  location     Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  publishedUrl String?         // Link postingan medsos setelah tayang
+  publishedAt  DateTime?
+
+  authorId     String
+  author       User            @relation("ContentIdeaAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([status])
+  @@index([targetDate])
+  @@map("content_ideas")
+}
+

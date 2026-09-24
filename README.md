@@ -23,6 +23,14 @@ The guiding principle is **input once → structured data → reuse everywhere**
   - **Folder-Style Student Explorer**: Navigable by Location $\rightarrow$ Learning Group $\rightarrow$ Student list.
   - **Curriculum-Linked Assessments**: Record student mastery (*Tuntas*, *Lancar*, *Cukup*, *Perlu Bimbingan*) and track progress percentage.
   - **Excel Export**: Download complete student achievement recaps (`.xlsx`) directly for reporting.
+- **Papan Ide & Referensi Konten Medsos Kolaboratif (`/konten`)**:
+  - Open idea bank: Volunteers and Admins can freely propose social media concepts and reference video links (Instagram, TikTok, YouTube) without bureaucratic approval delays.
+  - Transparent attribution: Every card prominently displays the author (*"Diusulkan oleh: [Nama Pengajar]"*).
+  - Collaborative field execution: Status progression (`IDE` $\rightarrow$ `RENCANA` $\rightarrow$ `PROSES_EDIT` $\rightarrow$ `TAYANG`) with direct live post URL verification for publication reporting.
+  - Mobile-first responsive UI: Swipeable metric strip, single-row status tabs, and side-by-side native select pickers for field smartphone usage.
+- **Jadwal Terbuka & Gerbang Presensi Murid**:
+  - Open schedule mechanism: Schedules configured with 0 assigned personnel automatically open up for all active teaching volunteers.
+  - Strict student attendance gate: Teachers must record their own attendance ("Hadir Sekarang") before unlocking permission to view or submit student attendance.
 - **SOP & Onboarding**:
   - Integrated **Panduan & SOP** page (`/panduan`) detailing field workflows, rules, and emergency contacts.
   - Automatic interactive onboarding guide tour for first-time login volunteers.
@@ -127,11 +135,12 @@ npm run dev          # http://localhost:3000
 npm test
 ```
 
-56 unit tests covering critical domain logic and safety boundaries:
+79 unit tests covering critical domain logic and safety boundaries:
 - **Reporting & Narrative**: Template rendering, WhatsApp text formatting, and checklist validation.
 - **Attendance & Rules**: Tally calculations, 5-hour cutoff rule for volunteer leave, and beneficiary-count consistency.
 - **Appeals & Assessments**: Attendance appeal status validation, student curriculum assessment grading, and progress aggregation.
 - **Auth & Schedules**: Volunteer credentials generation, JWT token lifecycle, and recurrence schedule expansion.
+- **Content Ideas & Workflow**: Zod schema validation for social media platform inputs, mandatory URL verification on publication status, and author/admin mutation access control.
 
 All tests run as pure functions or mocked services, executing in < 5 seconds without database dependencies.
 
@@ -168,13 +177,13 @@ ExcelJS · date-fns · Vitest
 src/
 ├── app/
 │   ├── (auth)/              login & first-time password update
-│   ├── (app)/               authenticated pages (dashboard, absensi, kegiatan, jadwal, murid, kurikulum, tempat, tim, panduan, pengaturan)
+│   ├── (app)/               authenticated pages (dashboard, absensi, kegiatan, jadwal, murid, kurikulum, tempat, tim, konten, panduan, pengaturan)
 │   └── api/                 upload, local upload serving, Excel exports (laporan & capaian)
 ├── components/
 │   ├── ui/                  shadcn primitives (Base UI)
 │   ├── common/              shared page shell, dialogs, button links, onboarding tour
 │   ├── layout/              sidebar, header, breadcrumbs
-│   └── <domain>/            attendance, activities, curriculum, students, team, ...
+│   └── <domain>/            attendance, activities, content, curriculum, students, team, ...
 ├── lib/                     auth, db, storage, validation, reports, dates, navigation
 ├── server/
 │   ├── actions/             mutations (Zod-validated, session-checked Server Actions)

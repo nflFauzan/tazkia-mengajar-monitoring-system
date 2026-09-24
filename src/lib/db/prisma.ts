@@ -1,3 +1,4 @@
+import path from "path";
 import { createRequire } from "module";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
@@ -22,7 +23,7 @@ function createPrismaClient(): PrismaClient {
 
   if (process.env.NODE_ENV === "development") {
     try {
-      const req = createRequire(import.meta.url);
+      const req = createRequire(path.join(process.cwd(), "package.json"));
       if (req.cache) {
         for (const key of Object.keys(req.cache)) {
           if (key.includes("@prisma") || key.includes(".prisma")) {
@@ -37,8 +38,8 @@ function createPrismaClient(): PrismaClient {
         adapter,
         log: ["warn", "error"],
       });
-    } catch {
-      // Fallback to static import if dynamic require fails
+    } catch (e) {
+      console.warn("[prisma.ts] Dynamic require failed, falling back to static import:", e);
     }
   }
 
@@ -59,7 +60,7 @@ export function getPrismaClient(): PrismaClient {
   if (
     cached &&
     process.env.NODE_ENV === "development" &&
-    !("attendanceAppeal" in cached)
+    (!("attendanceAppeal" in cached) || !("contentIdea" in cached))
   ) {
     globalForPrisma.prisma = undefined;
     cached = undefined;
