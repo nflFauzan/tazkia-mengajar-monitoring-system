@@ -35,59 +35,68 @@ export async function getContentIdeas(filters?: {
   locationId?: string;
   search?: string;
 }): Promise<ContentIdeaItem[]> {
-  const where: Prisma.ContentIdeaWhereInput = {};
+  try {
+    if (!prisma || !("contentIdea" in prisma) || !prisma.contentIdea) {
+      return [];
+    }
 
-  if (filters?.status) {
-    where.status = filters.status;
-  }
+    const where: Prisma.ContentIdeaWhereInput = {};
 
-  if (filters?.locationId) {
-    where.locationId = filters.locationId;
-  }
+    if (filters?.status) {
+      where.status = filters.status;
+    }
 
-  if (filters?.search?.trim()) {
-    const term = filters.search.trim();
-    where.OR = [
-      { title: { contains: term, mode: "insensitive" } },
-      { description: { contains: term, mode: "insensitive" } },
-      { contentType: { contains: term, mode: "insensitive" } },
-    ];
-  }
+    if (filters?.locationId) {
+      where.locationId = filters.locationId;
+    }
 
-  const rows = await prisma.contentIdea.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }],
-    include: {
-      location: { select: { id: true, name: true } },
-      author: {
-        select: {
-          id: true,
-          name: true,
-          teamMember: { select: { fullName: true } },
+    if (filters?.search?.trim()) {
+      const term = filters.search.trim();
+      where.OR = [
+        { title: { contains: term, mode: "insensitive" } },
+        { description: { contains: term, mode: "insensitive" } },
+        { contentType: { contains: term, mode: "insensitive" } },
+      ];
+    }
+
+    const rows = await prisma.contentIdea.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }],
+      include: {
+        location: { select: { id: true, name: true } },
+        author: {
+          select: {
+            id: true,
+            name: true,
+            teamMember: { select: { fullName: true } },
+          },
         },
       },
-    },
-  });
+    });
 
-  return rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    platform: r.platform,
-    contentType: r.contentType,
-    referenceUrl: r.referenceUrl,
-    description: r.description,
-    status: r.status,
-    targetDate: r.targetDate,
-    targetDateStr: r.targetDate ? r.targetDate.toISOString().split("T")[0] : null,
-    locationId: r.locationId,
-    locationName: r.location?.name ?? null,
-    publishedUrl: r.publishedUrl,
-    publishedAt: r.publishedAt,
-    authorId: r.authorId,
-    authorName: r.author.teamMember?.fullName || r.author.name,
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-  }));
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      platform: r.platform,
+      contentType: r.contentType,
+      referenceUrl: r.referenceUrl,
+      description: r.description,
+      status: r.status,
+      targetDate: r.targetDate,
+      targetDateStr: r.targetDate ? r.targetDate.toISOString().split("T")[0] : null,
+      locationId: r.locationId,
+      locationName: r.location?.name ?? null,
+      publishedUrl: r.publishedUrl,
+      publishedAt: r.publishedAt,
+      authorId: r.authorId,
+      authorName: r.author.teamMember?.fullName || r.author.name,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
+  } catch (error) {
+    console.error("Failed to load content ideas:", error);
+    return [];
+  }
 }
 
 export async function getContentIdeasStats(): Promise<{
@@ -97,22 +106,39 @@ export async function getContentIdeasStats(): Promise<{
   prosesEditCount: number;
   tayangCount: number;
 }> {
-  const [total, ideCount, rencanaCount, prosesEditCount, tayangCount] =
-    await Promise.all([
-      prisma.contentIdea.count(),
-      prisma.contentIdea.count({ where: { status: "IDE" } }),
-      prisma.contentIdea.count({ where: { status: "RENCANA" } }),
-      prisma.contentIdea.count({ where: { status: "PROSES_EDIT" } }),
-      prisma.contentIdea.count({ where: { status: "TAYANG" } }),
-    ]);
-
-  return {
-    total,
-    ideCount,
-    rencanaCount,
-    prosesEditCount,
-    tayangCount,
+  const fallback = {
+    total: 0,
+    ideCount: 0,
+    rencanaCount: 0,
+    prosesEditCount: 0,
+    tayangCount: 0,
   };
+
+  try {
+    if (!prisma || !("contentIdea" in prisma) || !prisma.contentIdea) {
+      return fallback;
+    }
+
+    const [total, ideCount, rencanaCount, prosesEditCount, tayangCount] =
+      await Promise.all([
+        prisma.contentIdea.count(),
+        prisma.contentIdea.count({ where: { status: "IDE" } }),
+        prisma.contentIdea.count({ where: { status: "RENCANA" } }),
+        prisma.contentIdea.count({ where: { status: "PROSES_EDIT" } }),
+        prisma.contentIdea.count({ where: { status: "TAYANG" } }),
+      ]);
+
+    return {
+      total,
+      ideCount,
+      rencanaCount,
+      prosesEditCount,
+      tayangCount,
+    };
+  } catch (error) {
+    console.error("Failed to load content ideas stats:", error);
+    return fallback;
+  }
 }
 
 export async function createContentIdea(
