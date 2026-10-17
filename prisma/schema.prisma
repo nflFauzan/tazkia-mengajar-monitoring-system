@@ -329,6 +329,10 @@ model Activity {
   aidType          String
   notes            String?
 
+  /// Google Drive folder for this activity's documentation.
+  driveFolderId    String?
+  driveFolderUrl   String?
+
   status ActivityStatus @default(DRAFT)
 
   createdById String

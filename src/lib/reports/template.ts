@@ -82,7 +82,7 @@ export function renderReportTemplate(
     formatTeamList(activity.teamMembers),
     "",
     "📷 Dokumentasi :",
-    "(terlampir)",
+    activity.driveFolderUrl || "(terlampir)",
     "",
     "📄 *Narasi :*",
     narrative,

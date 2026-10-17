@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { deleteDriveFile, isGoogleDriveConfigured } from "@/lib/gdrive";
 import { deleteFile } from "@/lib/storage";
 
 import { fail, handleUnexpected, ok } from "./types";
@@ -22,15 +23,19 @@ export async function deleteDocumentationAction(
 
     if (!doc) return fail("Dokumentasi tidak ditemukan.");
 
-    // The row goes first. If the blob delete fails afterwards the worst case is
+    // The row goes first. If the remote delete fails afterwards the worst case is
     // an orphaned object, whereas the reverse order can leave a row pointing at
-    // a file that no longer exists — a broken image in every report.
+    // a file that no longer exists.
     await prisma.documentation.delete({ where: { id } });
 
     try {
-      await deleteFile(doc.storageKey);
+      if (isGoogleDriveConfigured()) {
+        await deleteDriveFile(doc.storageKey);
+      } else {
+        await deleteFile(doc.storageKey);
+      }
     } catch (error) {
-      console.error("[deleteDocumentationAction] orphaned blob", error);
+      console.error("[deleteDocumentationAction] orphaned file", error);
     }
 
     revalidatePath(`/kegiatan/${doc.activityId}`);

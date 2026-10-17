@@ -16,7 +16,8 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "auth:gdrive": "node scripts/get-gdrive-token.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -29,6 +30,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "exceljs": "^4.4.0",
+    "googleapis": "^186.0.0",
     "jose": "^6.2.12",
     "lucide-react": "^1.46.0",
     "next": "16.3.5",

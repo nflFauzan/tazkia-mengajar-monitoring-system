@@ -30,9 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — never commit real secrets, but the template must stay tracked
+# env and credentials files — never commit real secrets, but the template must stay tracked
 .env*
 !.env.example
+*credentials*.json
+*service-account*.json
 
 # vercel
 .vercel

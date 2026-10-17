@@ -33,6 +33,8 @@ export interface ReportActivityInput {
   teamMembers: ReportTeamMemberInput[];
   /** Only the count matters to the template; files are attached separately. */
   documentationCount: number;
+  /** Google Drive folder link, if available. */
+  driveFolderUrl?: string | null;
 }
 
 /** One line of the "what is still missing" checklist shown before finalizing. */

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { ExternalLink } from "lucide-react";
 
 import { ActivityActions } from "@/components/activities/activity-actions";
 import { ActivityInfoForm } from "@/components/activities/activity-info-form";
@@ -177,6 +178,7 @@ export default async function ActivityDetailPage({
           <DocumentationPanel
             activityId={activity.id}
             documents={activity.documents}
+            driveFolderUrl={activity.driveFolderUrl}
             readOnly={!isEditable}
           />
         ) : null}
@@ -408,6 +410,7 @@ function ReviewStep({
       material: { title: string; meetingLabel: string | null };
     }>;
     documents: Array<{ id: string }>;
+    driveFolderUrl?: string | null;
   };
   studentWarning: string | null;
   missing: string[];
@@ -521,8 +524,19 @@ function ReviewStep({
 
       <section>
         <h3 className="mb-2 text-sm font-medium">Dokumentasi</h3>
-        <p className="text-muted-foreground text-sm">
-          {activity.documents.length} berkas terunggah.
+        <p className="text-muted-foreground text-sm flex items-center gap-2">
+          <span>{activity.documents.length} berkas terunggah.</span>
+          {activity.driveFolderUrl && (
+            <a
+              href={activity.driveFolderUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
+            >
+              Buka Google Drive
+              <ExternalLink className="size-3" />
+            </a>
+          )}
         </p>
       </section>
 

@@ -72,6 +72,7 @@ export interface ActivityRowForReport {
     orderIndex: number;
     teamMember: { fullName: string };
   }>;
+  driveFolderUrl?: string | null;
   _count?: { documents: number };
   documents?: unknown[];
 }
@@ -102,5 +103,6 @@ export function toReportInput(row: ActivityRowForReport): ReportActivityInput {
         attendance: entry.attendance,
       })),
     documentationCount,
+    driveFolderUrl: row.driveFolderUrl,
   };
 }

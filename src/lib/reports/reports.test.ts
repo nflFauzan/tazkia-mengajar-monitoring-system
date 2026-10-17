@@ -89,6 +89,23 @@ describe("renderReportTemplate", () => {
   it("does not leave any unreplaced placeholder", () => {
     expect(text).not.toMatch(/\{[A-Z_]+\}/);
   });
+
+  it("renders Google Drive link when driveFolderUrl is provided", () => {
+    const withDrive = renderReportTemplate(
+      {
+        ...baseActivity,
+        driveFolderUrl: "https://drive.google.com/drive/folders/test12345",
+      },
+      "NARASI",
+    );
+    expect(withDrive).toContain(
+      "📷 Dokumentasi :\nhttps://drive.google.com/drive/folders/test12345",
+    );
+  });
+
+  it("falls back to (terlampir) when driveFolderUrl is absent", () => {
+    expect(text).toContain("📷 Dokumentasi :\n(terlampir)");
+  });
 });
 
 describe("deriveRegion", () => {

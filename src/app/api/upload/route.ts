@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
+import { isGoogleDriveConfigured, uploadBufferToDrive } from "@/lib/gdrive";
 import { putFile } from "@/lib/storage";
 import { isRejection, processUpload } from "@/lib/storage/upload";
 
@@ -78,11 +79,27 @@ export async function POST(request: Request) {
     }
 
     try {
-      const stored = await putFile(
-        `kegiatan/${activityId}/${Date.now()}-${processed.filename}`,
-        processed.buffer,
-        processed.mimeType,
-      );
+      let storageKey: string;
+      let url: string;
+
+      if (isGoogleDriveConfigured()) {
+        const driveResult = await uploadBufferToDrive({
+          activityId,
+          filename: processed.filename,
+          mimeType: processed.mimeType,
+          buffer: processed.buffer,
+        });
+        storageKey = driveResult.fileId;
+        url = driveResult.webViewLink;
+      } else {
+        const stored = await putFile(
+          `kegiatan/${activityId}/${Date.now()}-${processed.filename}`,
+          processed.buffer,
+          processed.mimeType,
+        );
+        storageKey = stored.key;
+        url = stored.url;
+      }
 
       const row = await prisma.documentation.create({
         data: {
@@ -91,8 +108,8 @@ export async function POST(request: Request) {
           storedFilename: processed.filename,
           mimeType: processed.mimeType,
           size: processed.size,
-          storageKey: stored.key,
-          url: stored.url,
+          storageKey,
+          url,
           isImage: processed.isImage,
         },
         select: { id: true, originalFilename: true },
