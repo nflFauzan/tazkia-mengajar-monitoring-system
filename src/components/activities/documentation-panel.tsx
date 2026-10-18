@@ -81,7 +81,9 @@ export function DocumentationPanel({
    * Attempts Google Drive direct resumable upload.
    * If Google Drive is not configured, gracefully falls back to local /api/upload.
    */
-  async function uploadFileToDrive(file: File): Promise<{ ok: boolean; error?: string }> {
+  async function uploadFileToDrive(
+    file: File,
+  ): Promise<{ ok: boolean; error?: string; isConfigError?: boolean }> {
     try {
       // 1. Request a resumable upload session from backend
       const sessionRes = await fetch("/api/upload/gdrive-session", {
@@ -103,6 +105,7 @@ export function DocumentationPanel({
           error:
             sessionData.error ||
             `Gagal membuat sesi upload Google Drive (${sessionRes.status}).`,
+          isConfigError: sessionRes.status === 503,
         };
       }
 
@@ -233,6 +236,10 @@ export function DocumentationPanel({
         fallbackList.push(file);
       } else {
         failedMessages.push(result.error || `"${file.name}" gagal diunggah.`);
+        if (result.isConfigError) {
+          // If Google Drive is not configured on the server, abort remaining uploads
+          break;
+        }
       }
     }
 
@@ -256,7 +263,7 @@ export function DocumentationPanel({
     }
 
     if (failedMessages.length > 0) {
-      setErrors(failedMessages);
+      setErrors(Array.from(new Set(failedMessages)));
     }
 
     setIsUploading(false);
