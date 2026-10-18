@@ -84,3 +84,34 @@ export const firstTimePasswordChangeSchema = z
 export type FirstTimePasswordChangeInput = z.infer<
   typeof firstTimePasswordChangeSchema
 >;
+
+export const requestResetOtpSchema = z.object({
+  identifier: z
+    .string()
+    .trim()
+    .min(3, "Username atau nomor WhatsApp minimal 3 karakter.")
+    .max(100, "Input terlalu panjang."),
+});
+
+export type RequestResetOtpInput = z.infer<typeof requestResetOtpSchema>;
+
+export const verifyOtpAndResetPasswordSchema = z
+  .object({
+    resetSessionId: z.string().min(1, "Sesi reset tidak valid."),
+    otp: z
+      .string()
+      .trim()
+      .length(6, "Kode OTP harus 6 digit angka.")
+      .regex(/^\d{6}$/, "Kode OTP hanya berupa angka."),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, "Konfirmasi password baru wajib diisi."),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password baru tidak cocok.",
+    path: ["confirmPassword"],
+  });
+
+export type VerifyOtpAndResetPasswordInput = z.infer<
+  typeof verifyOtpAndResetPasswordSchema
+>;
+

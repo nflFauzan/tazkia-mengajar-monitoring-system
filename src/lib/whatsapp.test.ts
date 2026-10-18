@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildLoginCredentialsMessage,
+  buildOtpResetMessage,
   buildPasswordResetMessage,
   buildWhatsAppLink,
+  maskPhoneNumber,
   sanitizeIndonesianPhone,
 } from "./whatsapp";
 
@@ -90,3 +92,30 @@ describe("buildPasswordResetMessage", () => {
     expect(msg).toContain("direset oleh Admin");
   });
 });
+
+describe("maskPhoneNumber", () => {
+  it("masks the middle digits of Indonesian phone numbers", () => {
+    expect(maskPhoneNumber("081234567890")).toBe("0812-****-890");
+    expect(maskPhoneNumber("6281234567890")).toBe("6281-****-890");
+    expect(maskPhoneNumber("0812-3456-7890")).toBe("0812-****-890");
+  });
+
+  it("handles null or short numbers gracefully", () => {
+    expect(maskPhoneNumber(null)).toBe("");
+    expect(maskPhoneNumber("123")).toBe("123");
+  });
+});
+
+describe("buildOtpResetMessage", () => {
+  it("formats OTP message with code and recipient name", () => {
+    const msg = buildOtpResetMessage({
+      name: "Fauzan",
+      otp: "847291",
+    });
+
+    expect(msg).toContain("Kak Fauzan");
+    expect(msg).toContain("847291");
+    expect(msg).toContain("10 menit");
+  });
+});
+

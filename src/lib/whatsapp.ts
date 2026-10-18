@@ -126,3 +126,51 @@ export function buildPasswordResetMessage({
 
   return msg;
 }
+
+/**
+ * Masks a phone number for user privacy, e.g. "08123456789" -> "0812-****-789".
+ */
+export function maskPhoneNumber(phone?: string | null): string {
+  if (!phone) return "";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length < 8) return phone;
+  const start = cleaned.slice(0, 4);
+  const end = cleaned.slice(-3);
+  return `${start}-****-${end}`;
+}
+
+/**
+ * Formats a WhatsApp OTP message for self-service password reset.
+ */
+export function buildOtpResetMessage({
+  name,
+  otp,
+}: {
+  name: string;
+  otp: string;
+}): string {
+  let msg = `*Assalamu'alaikum Warahmatullahi Wabarakatuh Kak ${name}!*\n\n`;
+  msg += `Berikut kode verifikasi (OTP) untuk mereset password akun *Tazkia Mengajar Monitoring System* Anda:\n\n`;
+  msg += `*${otp}*\n\n`;
+  msg += `_Kode ini berlaku selama 10 menit._ Demi keamanan akun Anda, jangan bagikan kode ini kepada siapa pun termasuk pengurus.\n\n`;
+  msg += `Jika Anda tidak merasa meminta reset password, silakan abaikan pesan ini.\n\n`;
+  msg += `_Salam hangat,_\n*Tazkia Mengajar*`;
+  return msg;
+}
+
+/**
+ * Formats a notification message after password has been successfully reset.
+ */
+export function buildPasswordResetSuccessMessage({
+  name,
+}: {
+  name: string;
+}): string {
+  let msg = `*Assalamu'alaikum Warahmatullahi Wabarakatuh Kak ${name}!*\n\n`;
+  msg += `Alhamdulillah, password akun *Tazkia Mengajar Monitoring System* Anda telah berhasil diubah.\n\n`;
+  msg += `Sekarang Anda dapat login kembali menggunakan password baru tersebut.\n\n`;
+  msg += `Jika Anda tidak merasa melakukan perubahan ini, segera hubungi Admin Tazkia Mengajar.\n\n`;
+  msg += `_Salam hangat,_\n*Tazkia Mengajar*`;
+  return msg;
+}
+

@@ -60,7 +60,7 @@ export function getPrismaClient(): PrismaClient {
   if (
     cached &&
     process.env.NODE_ENV === "development" &&
-    (!("attendanceAppeal" in cached) || !("contentIdea" in cached))
+    (!("attendanceAppeal" in cached) || !("contentIdea" in cached) || !("passwordResetToken" in cached))
   ) {
     globalForPrisma.prisma = undefined;
     cached = undefined;
