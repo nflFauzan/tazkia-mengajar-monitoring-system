@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AiTeachingAssistant } from "@/components/curriculum/ai-teaching-assistant";
 
 interface MaterialDetailDialogProps {
   material: {
@@ -107,6 +108,19 @@ export function MaterialDetailDialog({
                 </div>
               </div>
             ) : null}
+
+            {/* Asisten AI Persiapan Mengajar */}
+            <AiTeachingAssistant
+              material={{
+                curriculumName,
+                periodName,
+                title: material.title,
+                meetingLabel: material.meetingLabel,
+                objective: material.objective,
+                description: material.description,
+                notes: material.notes,
+              }}
+            />
 
             {/* Panduan Pembelajaran */}
             <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground flex items-start gap-2 bg-background">
