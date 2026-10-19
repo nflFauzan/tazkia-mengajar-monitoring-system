@@ -20,12 +20,16 @@ import {
 import { fail, fromZodError, handleUnexpected, ok } from "./types";
 import type { ActionResult } from "./types";
 
+import { syncWeeklyAttendance } from "@/server/services/weekly-attendance";
+import type { SyncWeeklyAttendanceResult } from "@/server/services/weekly-attendance";
+
 const LIST_PATH = "/kegiatan";
 
 function revalidateActivity(id: string) {
   revalidatePath(LIST_PATH);
   revalidatePath(`/kegiatan/${id}`);
   revalidatePath("/dashboard");
+  revalidatePath("/laporan/rekap");
 }
 
 function parseInfoForm(formData: FormData) {
@@ -161,6 +165,12 @@ export async function saveActivityTeamAction(
       }),
     ]);
 
+    try {
+      await syncWeeklyAttendance();
+    } catch (syncError) {
+      console.warn("[saveActivityTeamAction] Weekly attendance sync warning:", syncError);
+    }
+
     revalidateActivity(activityId);
     return ok();
   } catch (error) {
@@ -168,6 +178,29 @@ export async function saveActivityTeamAction(
       "saveActivityTeamAction",
       error,
       "Gagal menyimpan absensi tim. Silakan coba lagi.",
+    );
+  }
+}
+
+/**
+ * Manually or programmatically triggers a full weekly attendance synchronization.
+ */
+export async function syncWeeklyAttendanceAction(): Promise<
+  ActionResult<SyncWeeklyAttendanceResult>
+> {
+  await requireUser();
+
+  try {
+    const result = await syncWeeklyAttendance();
+    revalidatePath("/laporan/rekap");
+    revalidatePath("/kegiatan");
+    revalidatePath("/dashboard");
+    return ok(result);
+  } catch (error) {
+    return handleUnexpected(
+      "syncWeeklyAttendanceAction",
+      error,
+      "Gagal menyinkronkan alpa mingguan.",
     );
   }
 }

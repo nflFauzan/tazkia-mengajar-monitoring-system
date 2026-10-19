@@ -142,7 +142,7 @@ export default async function PanduanPage() {
                 Otomatis Alpa & Banding
               </div>
               <p className="text-muted-foreground">
-                Pengajar yang ditugaskan namun tidak melakukan presensi hingga kegiatan selesai akan otomatis tercatat <strong>ALPA</strong> oleh sistem.
+                Pengajar wajib mengikuti minimal 1 kegiatan mengajar dalam 1 pekan. Pengajar yang tidak mengikuti kegiatan manapun dalam satu pekan (tanpa keterangan izin/sakit) akan otomatis tercatat <strong>ALPA</strong> mingguan oleh sistem.
               </p>
               <p className="text-muted-foreground pt-1">
                 Bila terjadi kendala teknis jaringan atau kondisi darurat, pengajar dapat mengajukan <strong>Banding Presensi</strong> melalui tombol di riwayat absensi untuk diverifikasi oleh Admin.

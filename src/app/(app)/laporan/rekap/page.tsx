@@ -18,6 +18,7 @@ import {
   buildActivityWhere,
   readActivityFilters,
 } from "@/server/services/activity-query";
+import { syncWeeklyAttendance } from "@/server/services/weekly-attendance";
 
 export const metadata: Metadata = { title: "Rekap" };
 
@@ -32,6 +33,12 @@ export default async function RekapPage({
   searchParams,
 }: PageProps<"/laporan/rekap">) {
   await requireAdmin();
+
+  try {
+    await syncWeeklyAttendance();
+  } catch (syncError) {
+    console.warn("[RekapPage] Weekly attendance sync warning:", syncError);
+  }
 
   const params = await searchParams;
   const filters = readActivityFilters(params);

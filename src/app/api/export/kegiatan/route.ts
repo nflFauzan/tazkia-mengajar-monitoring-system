@@ -9,6 +9,7 @@ import {
   buildActivityWorkbook,
   buildExportFilename,
 } from "@/server/services/excel-export";
+import { syncWeeklyAttendance } from "@/server/services/weekly-attendance";
 
 /**
  * Excel export of the activity recap and both attendance recaps.
@@ -31,6 +32,12 @@ export async function GET(request: Request) {
   const params = Object.fromEntries(url.searchParams.entries());
 
   try {
+    try {
+      await syncWeeklyAttendance();
+    } catch (syncError) {
+      console.warn("[export/kegiatan] Weekly attendance sync warning:", syncError);
+    }
+
     const where = buildActivityWhere(readActivityFilters(params));
     const workbook = await buildActivityWorkbook(where);
     const buffer = await workbook.xlsx.writeBuffer();

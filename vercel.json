@@ -3,6 +3,12 @@
   "buildCommand": "prisma migrate deploy && next build",
   "framework": "nextjs",
   "regions": ["sin1"],
+  "crons": [
+    {
+      "path": "/api/cron/sync-attendance",
+      "schedule": "0 1 * * 1"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
