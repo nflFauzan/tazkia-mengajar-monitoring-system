@@ -7,6 +7,8 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Layers,
   Loader2,
@@ -198,6 +200,29 @@ export function StudentAssessmentDialog({
     }
   }
 
+  function handlePrevMeeting() {
+    if (selectedMeeting === "ALL") return;
+    const currentIndex = meetingOptions.meetings.indexOf(selectedMeeting);
+    if (currentIndex > 0) {
+      handleSelectMeeting(meetingOptions.meetings[currentIndex - 1]);
+    } else if (currentIndex === 0) {
+      handleSelectMeeting("ALL");
+    }
+  }
+
+  function handleNextMeeting() {
+    if (selectedMeeting === "ALL") {
+      if (meetingOptions.meetings.length > 0) {
+        handleSelectMeeting(meetingOptions.meetings[0]);
+      }
+      return;
+    }
+    const currentIndex = meetingOptions.meetings.indexOf(selectedMeeting);
+    if (currentIndex < meetingOptions.meetings.length - 1) {
+      handleSelectMeeting(meetingOptions.meetings[currentIndex + 1]);
+    }
+  }
+
   async function handleOpenChange(newOpen: boolean) {
     setOpen(newOpen);
     if (newOpen) {
@@ -281,7 +306,7 @@ export function StudentAssessmentDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="outline" className="text-xs">
@@ -299,7 +324,7 @@ export function StudentAssessmentDialog({
 
           <div className="space-y-6 py-2">
             {/* Form Input Penilaian Baru */}
-            <div className="rounded-xl border-2 border-primary/25 bg-primary/5 p-4 sm:p-5 space-y-4">
+            <div className="rounded-xl border-2 border-primary/25 bg-primary/5 p-4 sm:p-5 space-y-4 overflow-hidden min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-primary/15">
                 <div className="flex items-center gap-1.5 font-bold text-xs tracking-wider text-primary uppercase">
                   <Plus className="size-4" />
@@ -338,117 +363,137 @@ export function StudentAssessmentDialog({
               </div>
 
               {mode === "CURRICULUM" ? (
-                <div className="space-y-3">
+                <div className="space-y-3 min-w-0">
                   {materials.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
                       Belum ada materi kurikulum aktif. Silakan gunakan opsi Topik Bebas / Mandiri.
                     </div>
                   ) : (
                     <>
-                      {/* 1. Pilih Pertemuan (Meeting Chips) */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
-                            <Layers className="size-3.5 text-primary" />
-                            <span>Pilih Pertemuan:</span>
-                          </Label>
-                          {selectedMeeting !== "ALL" && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedMeeting("ALL")}
-                              className="text-[11px] text-primary hover:underline font-medium"
-                            >
-                              Tampilkan Semua Pertemuan
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Scrollable Meeting Chips */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
-                          <button
-                            type="button"
-                            onClick={() => handleSelectMeeting("ALL")}
-                            className={cn(
-                              "px-2.5 py-1 rounded-full text-xs shrink-0 transition-all font-medium border",
-                              selectedMeeting === "ALL"
-                                ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
-                                : "bg-background text-muted-foreground hover:bg-muted border-border"
-                            )}
-                          >
-                            Semua ({materials.length})
-                          </button>
-                          {meetingOptions.meetings.map((meeting) => {
-                            const count = materials.filter(
-                              (m) => m.meetingLabel === meeting
-                            ).length;
-                            const isSelected = selectedMeeting === meeting;
-                            return (
-                              <button
-                                key={meeting}
-                                type="button"
-                                onClick={() => handleSelectMeeting(meeting)}
-                                className={cn(
-                                  "px-2.5 py-1 rounded-full text-xs shrink-0 transition-all font-medium border flex items-center gap-1.5",
-                                  isSelected
-                                    ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
-                                    : "bg-background text-muted-foreground hover:bg-muted border-border"
-                                )}
-                              >
-                                <span>{meeting}</span>
-                                <span
-                                  className={cn(
-                                    "text-[10px] px-1.5 py-0.2 rounded-full",
-                                    isSelected
-                                      ? "bg-primary-foreground/20 text-primary-foreground"
-                                      : "bg-muted text-muted-foreground"
-                                  )}
+                      {/* Filter Bar: Dropdown Pertemuan & Kolom Pencarian */}
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {/* Dropdown Pertemuan */}
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                                <Layers className="size-3.5 text-primary" />
+                                <span>Pilih Pertemuan:</span>
+                              </Label>
+                              {selectedMeeting !== "ALL" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectMeeting("ALL")}
+                                  className="text-[11px] text-primary hover:underline font-medium"
                                 >
-                                  {count}
-                                </span>
-                              </button>
-                            );
-                          })}
-                          {meetingOptions.hasNoMeeting && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectMeeting("UNASSIGNED")}
-                              className={cn(
-                                "px-2.5 py-1 rounded-full text-xs shrink-0 transition-all font-medium border",
-                                selectedMeeting === "UNASSIGNED"
-                                  ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
-                                  : "bg-background text-muted-foreground hover:bg-muted border-border"
+                                  Lihat Semua ({materials.length})
+                                </button>
                               )}
-                            >
-                              Umum / Lainnya
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                            </div>
 
-                      {/* 2. Filter Bar: Search Box & Curriculum Filter */}
-                      <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
-                        <div className="relative flex-1">
-                          <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                          <Input
-                            placeholder="Cari materi kurikulum (contoh: wudhu, sholat, adab)..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8 pr-7 h-8 text-xs bg-background"
-                          />
-                          {searchQuery && (
-                            <button
-                              type="button"
-                              onClick={() => setSearchQuery("")}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
-                              title="Hapus pencarian"
-                            >
-                              <X className="size-3" />
-                            </button>
-                          )}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                  selectedMeeting === "ALL" ||
+                                  meetingOptions.meetings.indexOf(selectedMeeting) <= 0
+                                }
+                                onClick={handlePrevMeeting}
+                                className="h-9 w-8 p-0 shrink-0 bg-background"
+                                title="Pertemuan sebelumnya"
+                              >
+                                <ChevronLeft className="size-4" />
+                              </Button>
+
+                              <div className="flex-1 min-w-0">
+                                <Select
+                                  value={selectedMeeting}
+                                  onValueChange={(val) =>
+                                    handleSelectMeeting(val ?? "ALL")
+                                  }
+                                >
+                                  <SelectTrigger className="w-full h-9 bg-background text-xs font-medium">
+                                    <SelectValue placeholder="Pilih Pertemuan" />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-64 w-[var(--anchor-width)] min-w-[280px]">
+                                    <SelectItem value="ALL">
+                                      Semua Pertemuan ({materials.length} materi)
+                                    </SelectItem>
+                                    {meetingOptions.meetings.map((meeting) => {
+                                      const matching = materials.filter(
+                                        (m) => m.meetingLabel === meeting
+                                      );
+                                      const count = matching.length;
+                                      const titleHint =
+                                        count === 1
+                                          ? ` — ${matching[0].title}`
+                                          : ` (${count} materi)`;
+                                      return (
+                                        <SelectItem key={meeting} value={meeting}>
+                                          <span className="font-semibold">{meeting}</span>
+                                          <span className="text-muted-foreground">{titleHint}</span>
+                                        </SelectItem>
+                                      );
+                                    })}
+                                    {meetingOptions.hasNoMeeting && (
+                                      <SelectItem value="UNASSIGNED">
+                                        Umum / Tanpa Pertemuan
+                                      </SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                  selectedMeeting !== "ALL" &&
+                                  meetingOptions.meetings.indexOf(selectedMeeting) >=
+                                    meetingOptions.meetings.length - 1
+                                }
+                                onClick={handleNextMeeting}
+                                className="h-9 w-8 p-0 shrink-0 bg-background"
+                                title="Pertemuan berikutnya"
+                              >
+                                <ChevronRight className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Search Input */}
+                          <div className="space-y-1 min-w-0">
+                            <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                              <Search className="size-3.5 text-primary" />
+                              <span>Cari Materi:</span>
+                            </Label>
+                            <div className="relative">
+                              <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                              <Input
+                                placeholder="Cari judul materi (wudhu, adab, sholat)..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 pr-7 h-9 text-xs bg-background"
+                              />
+                              {searchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSearchQuery("")}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                                  title="Hapus pencarian"
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
                         {curriculumOptions.length > 1 && (
-                          <div className="w-full sm:w-52">
+                          <div className="pt-1">
                             <Select
                               value={selectedCurriculum}
                               onValueChange={(val) =>
