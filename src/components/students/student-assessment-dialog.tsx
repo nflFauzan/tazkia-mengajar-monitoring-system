@@ -7,6 +7,7 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -33,13 +34,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatTanggalSingkat } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -306,58 +300,58 @@ export function StudentAssessmentDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader>
-            <div className="flex items-center gap-2 mb-1">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="pr-7 space-y-1.5">
+            <div className="flex items-center gap-2 mb-0.5">
               <Badge variant="outline" className="text-xs">
                 {groupName}
               </Badge>
             </div>
-            <DialogTitle className="text-xl font-heading tracking-tight flex items-center gap-2">
-              <Award className="size-5 text-primary" />
-              Penilaian & Capaian Murid: {studentName}
+            <DialogTitle className="text-lg sm:text-xl font-heading tracking-tight flex items-start sm:items-center gap-2">
+              <Award className="size-5 text-primary shrink-0 mt-0.5 sm:mt-0" />
+              <span className="break-words">Penilaian & Capaian Murid: {studentName}</span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               Catat kemajuan dan penguasaan materi kurikulum oleh murid secara berkala.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-2">
+          <div className="space-y-5 py-1">
             {/* Form Input Penilaian Baru */}
-            <div className="rounded-xl border-2 border-primary/25 bg-primary/5 p-4 sm:p-5 space-y-4 overflow-hidden min-w-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-primary/15">
+            <div className="rounded-xl border-2 border-primary/25 bg-primary/5 p-3.5 sm:p-5 space-y-4 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-primary/15">
                 <div className="flex items-center gap-1.5 font-bold text-xs tracking-wider text-primary uppercase">
                   <Plus className="size-4" />
                   <span>Input Capaian Baru</span>
                 </div>
 
-                {/* Tab Mode: Kurikulum vs Manual */}
-                <div className="inline-flex p-1 bg-background border border-border/80 rounded-lg text-xs self-start sm:self-auto">
+                {/* Tab Mode: Kurikulum vs Manual (Responsive Grid on Mobile) */}
+                <div className="grid grid-cols-2 p-1 bg-background border border-border/80 rounded-lg text-xs w-full sm:w-auto gap-1">
                   <button
                     type="button"
                     onClick={() => setMode("CURRICULUM")}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all",
+                      "flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all text-center",
                       mode === "CURRICULUM"
                         ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <BookOpen className="size-3.5" />
-                    <span>Materi Kurikulum</span>
+                    <BookOpen className="size-3.5 shrink-0" />
+                    <span className="truncate">Kurikulum</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode("CUSTOM")}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all",
+                      "flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all text-center",
                       mode === "CUSTOM"
                         ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <PenLine className="size-3.5" />
-                    <span>Topik Bebas / Mandiri</span>
+                    <PenLine className="size-3.5 shrink-0" />
+                    <span className="truncate">Topik Bebas</span>
                   </button>
                 </div>
               </div>
@@ -366,12 +360,12 @@ export function StudentAssessmentDialog({
                 <div className="space-y-3 min-w-0">
                   {materials.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-                      Belum ada materi kurikulum aktif. Silakan gunakan opsi Topik Bebas / Mandiri.
+                      Belum ada materi kurikulum aktif. Silakan gunakan opsi Topik Bebas.
                     </div>
                   ) : (
                     <>
                       {/* Filter Bar: Dropdown Pertemuan & Kolom Pencarian */}
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           {/* Dropdown Pertemuan */}
                           <div className="space-y-1 min-w-0">
@@ -391,7 +385,7 @@ export function StudentAssessmentDialog({
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5 w-full min-w-0">
                               <Button
                                 type="button"
                                 variant="outline"
@@ -407,43 +401,39 @@ export function StudentAssessmentDialog({
                                 <ChevronLeft className="size-4" />
                               </Button>
 
-                              <div className="flex-1 min-w-0">
-                                <Select
+                              <div className="relative flex-1 min-w-0">
+                                <select
                                   value={selectedMeeting}
-                                  onValueChange={(val) =>
-                                    handleSelectMeeting(val ?? "ALL")
+                                  onChange={(e) =>
+                                    handleSelectMeeting(e.target.value)
                                   }
+                                  className="w-full h-9 rounded-lg border border-input bg-background pl-2.5 pr-7 text-xs font-medium text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 truncate cursor-pointer appearance-none"
                                 >
-                                  <SelectTrigger className="w-full h-9 bg-background text-xs font-medium">
-                                    <SelectValue placeholder="Pilih Pertemuan" />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-64 w-[var(--anchor-width)] min-w-[280px]">
-                                    <SelectItem value="ALL">
-                                      Semua Pertemuan ({materials.length} materi)
-                                    </SelectItem>
-                                    {meetingOptions.meetings.map((meeting) => {
-                                      const matching = materials.filter(
-                                        (m) => m.meetingLabel === meeting
-                                      );
-                                      const count = matching.length;
-                                      const titleHint =
-                                        count === 1
-                                          ? ` — ${matching[0].title}`
-                                          : ` (${count} materi)`;
-                                      return (
-                                        <SelectItem key={meeting} value={meeting}>
-                                          <span className="font-semibold">{meeting}</span>
-                                          <span className="text-muted-foreground">{titleHint}</span>
-                                        </SelectItem>
-                                      );
-                                    })}
-                                    {meetingOptions.hasNoMeeting && (
-                                      <SelectItem value="UNASSIGNED">
-                                        Umum / Tanpa Pertemuan
-                                      </SelectItem>
-                                    )}
-                                  </SelectContent>
-                                </Select>
+                                  <option value="ALL">
+                                    Semua Pertemuan ({materials.length} materi)
+                                  </option>
+                                  {meetingOptions.meetings.map((meeting) => {
+                                    const matching = materials.filter(
+                                      (m) => m.meetingLabel === meeting
+                                    );
+                                    const count = matching.length;
+                                    const titleHint =
+                                      count === 1
+                                        ? ` — ${matching[0].title}`
+                                        : ` (${count} materi)`;
+                                    return (
+                                      <option key={meeting} value={meeting}>
+                                        {meeting}{titleHint}
+                                      </option>
+                                    );
+                                  })}
+                                  {meetingOptions.hasNoMeeting && (
+                                    <option value="UNASSIGNED">
+                                      Umum / Tanpa Pertemuan
+                                    </option>
+                                  )}
+                                </select>
+                                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                               </div>
 
                               <Button
@@ -476,7 +466,7 @@ export function StudentAssessmentDialog({
                                 placeholder="Cari judul materi (wudhu, adab, sholat)..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 pr-7 h-9 text-xs bg-background"
+                                className="pl-8 pr-7 h-9 text-xs bg-background w-full"
                               />
                               {searchQuery && (
                                 <button
@@ -493,25 +483,24 @@ export function StudentAssessmentDialog({
                         </div>
 
                         {curriculumOptions.length > 1 && (
-                          <div className="pt-1">
-                            <Select
-                              value={selectedCurriculum}
-                              onValueChange={(val) =>
-                                setSelectedCurriculum(val ?? "ALL")
-                              }
-                            >
-                              <SelectTrigger className="w-full h-8 text-xs bg-background">
-                                <SelectValue placeholder="Pilih Kurikulum" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="ALL">Semua Kurikulum</SelectItem>
+                          <div className="pt-0.5">
+                            <div className="relative w-full">
+                              <select
+                                value={selectedCurriculum}
+                                onChange={(e) =>
+                                  setSelectedCurriculum(e.target.value)
+                                }
+                                className="w-full h-8 rounded-lg border border-input bg-background pl-2.5 pr-7 text-xs font-medium text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 truncate cursor-pointer appearance-none"
+                              >
+                                <option value="ALL">Semua Kurikulum</option>
                                 {curriculumOptions.map((c) => (
-                                  <SelectItem key={c} value={c}>
+                                  <option key={c} value={c}>
                                     {c}
-                                  </SelectItem>
+                                  </option>
                                 ))}
-                              </SelectContent>
-                            </Select>
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -557,7 +546,7 @@ export function StudentAssessmentDialog({
                                   type="button"
                                   onClick={() => setSelectedMaterialId(m.id)}
                                   className={cn(
-                                    "w-full text-left p-2.5 rounded-lg border transition-all flex items-start justify-between gap-3 group",
+                                    "w-full text-left p-2.5 rounded-lg border transition-all flex items-start justify-between gap-2.5 group min-w-0",
                                     isSelected
                                       ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary"
                                       : "bg-background border-border hover:border-primary/50 hover:bg-muted/40"
@@ -568,21 +557,21 @@ export function StudentAssessmentDialog({
                                       {m.meetingLabel ? (
                                         <Badge
                                           variant={isSelected ? "default" : "secondary"}
-                                          className="text-[10px] px-1.5 py-0 h-4 font-semibold tracking-wide"
+                                          className="text-[10px] px-1.5 py-0 h-4 font-semibold tracking-wide shrink-0"
                                         >
                                           {m.meetingLabel}
                                         </Badge>
                                       ) : (
                                         <Badge
                                           variant="outline"
-                                          className="text-[10px] px-1.5 py-0 h-4"
+                                          className="text-[10px] px-1.5 py-0 h-4 shrink-0"
                                         >
                                           Umum
                                         </Badge>
                                       )}
                                       <span
                                         className={cn(
-                                          "text-xs font-semibold leading-tight",
+                                          "text-xs font-semibold leading-tight break-words",
                                           isSelected ? "text-primary" : "text-foreground"
                                         )}
                                       >
@@ -591,13 +580,13 @@ export function StudentAssessmentDialog({
                                     </div>
 
                                     {m.objective ? (
-                                      <p className="text-[11px] text-muted-foreground line-clamp-1 italic">
+                                      <p className="text-[11px] text-muted-foreground line-clamp-2 italic break-words">
                                         Tujuan: {m.objective}
                                       </p>
                                     ) : null}
 
-                                    <div className="text-[10px] text-muted-foreground/80 flex items-center gap-1.5">
-                                      <span>{m.curriculumName}</span>
+                                    <div className="text-[10px] text-muted-foreground/80 flex flex-wrap items-center gap-1.5">
+                                      <span className="truncate">{m.curriculumName}</span>
                                       {m.periodName ? (
                                         <>
                                           <span>&bull;</span>
@@ -625,10 +614,10 @@ export function StudentAssessmentDialog({
 
                       {/* 4. Banner Konfirmasi Materi Terpilih */}
                       {selectedMaterial && (
-                        <div className="rounded-lg bg-background border border-primary/40 p-2.5 flex items-center justify-between text-xs shadow-xs">
-                          <div className="flex items-center gap-2 min-w-0">
+                        <div className="rounded-lg bg-background border border-primary/40 p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs shadow-xs min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
                             <CheckCircle2 className="size-4 text-primary shrink-0" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                                 Materi Terpilih:
                               </span>
@@ -640,7 +629,7 @@ export function StudentAssessmentDialog({
                               </span>
                             </div>
                           </div>
-                          <Badge variant="secondary" className="text-[10px] shrink-0">
+                          <Badge variant="secondary" className="text-[10px] self-start sm:self-auto shrink-0 max-w-full truncate">
                             {selectedMaterial.curriculumName}
                           </Badge>
                         </div>
@@ -650,7 +639,7 @@ export function StudentAssessmentDialog({
                 </div>
               ) : (
                 /* Mode Topik Mandiri / Bebas */
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <div className="space-y-1.5">
                     <Label htmlFor="customTitle" className="text-xs font-semibold">
                       Nama Topik / Materi yang Dinilai <span className="text-destructive">*</span>
@@ -661,7 +650,7 @@ export function StudentAssessmentDialog({
                       value={customTitle}
                       onChange={(e) => setCustomTitle(e.target.value)}
                       disabled={isPending}
-                      className="bg-background text-xs"
+                      className="bg-background text-xs w-full"
                     />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
@@ -671,9 +660,9 @@ export function StudentAssessmentDialog({
               )}
 
               {/* Tingkat Penguasaan / Status */}
-              <div className="space-y-1.5 pt-1 border-t border-border/40">
+              <div className="space-y-1.5 pt-1 border-t border-border/40 min-w-0">
                 <Label className="text-xs font-semibold">Tingkat Penguasaan / Status</Label>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {STATUS_OPTIONS.map((opt) => {
                     const isSelected = status === opt.value;
                     return (
@@ -683,14 +672,14 @@ export function StudentAssessmentDialog({
                         disabled={isPending}
                         onClick={() => setStatus(opt.value)}
                         className={cn(
-                          "px-3 py-1.5 text-xs rounded-lg border transition-all font-semibold flex items-center gap-1.5",
+                          "px-2.5 py-2 text-xs rounded-lg border transition-all font-semibold flex items-center justify-center gap-1.5 text-center min-w-0",
                           isSelected
                             ? opt.activeClass
                             : "bg-background hover:bg-muted text-foreground border-border"
                         )}
                       >
-                        {isSelected && <Sparkles className="size-3" />}
-                        <span>{opt.label}</span>
+                        {isSelected && <Sparkles className="size-3 shrink-0" />}
+                        <span className="truncate">{opt.label}</span>
                       </button>
                     );
                   })}
