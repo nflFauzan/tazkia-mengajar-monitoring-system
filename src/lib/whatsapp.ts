@@ -149,12 +149,10 @@ export function buildOtpResetMessage({
   name: string;
   otp: string;
 }): string {
-  let msg = `*Assalamu'alaikum Warahmatullahi Wabarakatuh Kak ${name}!*\n\n`;
-  msg += `Berikut kode verifikasi (OTP) untuk mereset password akun *Tazkia Mengajar Monitoring System* Anda:\n\n`;
+  let msg = `*Halo Kak ${name}!* 👋\n\n`;
+  msg += `Kode OTP reset password Tazkia Mengajar Anda:\n`;
   msg += `*${otp}*\n\n`;
-  msg += `_Kode ini berlaku selama 10 menit._ Demi keamanan akun Anda, jangan bagikan kode ini kepada siapa pun termasuk pengurus.\n\n`;
-  msg += `Jika Anda tidak merasa meminta reset password, silakan abaikan pesan ini.\n\n`;
-  msg += `_Salam hangat,_\n*Tazkia Mengajar*`;
+  msg += `_Berlaku 10 menit. Jangan berikan kode ini kepada siapa pun._`;
   return msg;
 }
 
@@ -166,11 +164,9 @@ export function buildPasswordResetSuccessMessage({
 }: {
   name: string;
 }): string {
-  let msg = `*Assalamu'alaikum Warahmatullahi Wabarakatuh Kak ${name}!*\n\n`;
-  msg += `Alhamdulillah, password akun *Tazkia Mengajar Monitoring System* Anda telah berhasil diubah.\n\n`;
-  msg += `Sekarang Anda dapat login kembali menggunakan password baru tersebut.\n\n`;
-  msg += `Jika Anda tidak merasa melakukan perubahan ini, segera hubungi Admin Tazkia Mengajar.\n\n`;
-  msg += `_Salam hangat,_\n*Tazkia Mengajar*`;
+  let msg = `*Halo Kak ${name}!* 👋\n\n`;
+  msg += `Password akun Tazkia Mengajar Anda telah berhasil diubah.\n`;
+  msg += `Jika bukan Anda yang melakukannya, segera hubungi Admin.`;
   return msg;
 }
 
