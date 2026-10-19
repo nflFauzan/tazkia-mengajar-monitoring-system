@@ -14,10 +14,10 @@ import {
 } from "@/server/actions/notifications";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
+  const cleanStr = base64String.replace(/['"]+/g, "").trim();
+  const unpadded = cleanStr.replace(/=+$/, "");
+  const padding = "=".repeat((4 - (unpadded.length % 4)) % 4);
+  const base64 = (unpadded + padding).replace(/-/g, "+").replace(/_/g, "/");
 
   const rawData = window.atob(base64);
   const buffer = new ArrayBuffer(rawData.length);
@@ -93,16 +93,27 @@ export function PushNotificationBanner() {
       return;
     }
 
-    const keyToUse =
-      vapidKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
-
-    if (!keyToUse) {
-      toast.error("Kunci VAPID belum dikonfigurasi oleh server.");
-      return;
-    }
-
     startTransition(async () => {
       try {
+        let keyToUse = vapidKey;
+        if (!keyToUse) {
+          const resKey = await getUserPushSubscriptionCountAction();
+          if (resKey.ok && resKey.data.vapidPublicKey) {
+            keyToUse = resKey.data.vapidPublicKey;
+            setVapidKey(keyToUse);
+          }
+        }
+        if (!keyToUse) {
+          keyToUse = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+        }
+
+        keyToUse = keyToUse.replace(/['"]+/g, "").trim();
+
+        if (!keyToUse) {
+          toast.error("Kunci VAPID belum dikonfigurasi di server. Pastikan Vercel sudah di-redeploy setelah setel environment variable.");
+          return;
+        }
+
         const perm = await Notification.requestPermission();
         setPermission(perm);
 

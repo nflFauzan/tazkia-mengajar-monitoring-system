@@ -16,14 +16,18 @@ let isVapidConfigured = false;
 function ensureVapidConfigured(): boolean {
   if (isVapidConfigured) return true;
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:admin@tazkiamengajar.id";
+  const rawPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const rawPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  const rawSubject = process.env.VAPID_SUBJECT || "mailto:admin@tazkiamengajar.id";
 
-  if (!publicKey || !privateKey) {
+  if (!rawPublicKey || !rawPrivateKey) {
     console.warn("[Push] VAPID keys not configured in environment variables.");
     return false;
   }
+
+  const publicKey = rawPublicKey.replace(/['"]+/g, "").trim();
+  const privateKey = rawPrivateKey.replace(/['"]+/g, "").trim();
+  const subject = rawSubject.replace(/['"]+/g, "").trim();
 
   try {
     webpush.setVapidDetails(subject, publicKey, privateKey);

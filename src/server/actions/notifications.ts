@@ -137,8 +137,9 @@ export async function getUserPushSubscriptionCountAction(): Promise<
     where: { userId: user.id },
   });
 
+  const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
   return ok({
     count,
-    vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    vapidPublicKey: rawKey.replace(/['"]+/g, "").trim(),
   });
 }
