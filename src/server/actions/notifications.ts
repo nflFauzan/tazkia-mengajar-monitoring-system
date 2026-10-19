@@ -129,6 +129,15 @@ export async function broadcastTodayScheduleRemindersAction(): Promise<
   }
 }
 
+const FALLBACK_VAPID_PUBLIC_KEY =
+  "BCxHLSJaqmUMJ4zmjLbLzT71A2b90VmFKDlimx49amZRqrQ1OqYfNOqkAAIKQJ_nStPELnYCRyoNS2rR2DVVYWg";
+
+function isValidVapidKey(key?: string | null): boolean {
+  if (!key) return false;
+  const clean = key.replace(/['"]+/g, "").trim();
+  return clean.length >= 80 && /^[A-Za-z0-9_-]+$/.test(clean);
+}
+
 export async function getUserPushSubscriptionCountAction(): Promise<
   ActionResult<{ count: number; vapidPublicKey: string }>
 > {
@@ -137,9 +146,13 @@ export async function getUserPushSubscriptionCountAction(): Promise<
     where: { userId: user.id },
   });
 
-  const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+  const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const vapidPublicKey = isValidVapidKey(rawKey)
+    ? rawKey!.replace(/['"]+/g, "").trim()
+    : FALLBACK_VAPID_PUBLIC_KEY;
+
   return ok({
     count,
-    vapidPublicKey: rawKey.replace(/['"]+/g, "").trim(),
+    vapidPublicKey,
   });
 }

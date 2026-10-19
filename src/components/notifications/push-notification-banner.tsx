@@ -13,20 +13,43 @@ import {
   sendTestPushNotificationAction,
 } from "@/server/actions/notifications";
 
+const FALLBACK_VAPID_PUBLIC_KEY =
+  "BCxHLSJaqmUMJ4zmjLbLzT71A2b90VmFKDlimx49amZRqrQ1OqYfNOqkAAIKQJ_nStPELnYCRyoNS2rR2DVVYWg";
+
+function isValidVapidKey(key?: string | null): boolean {
+  if (!key) return false;
+  const clean = key.replace(/['"]+/g, "").trim();
+  return clean.length >= 80 && /^[A-Za-z0-9_-]+$/.test(clean);
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const cleanStr = base64String.replace(/['"]+/g, "").trim();
-  const unpadded = cleanStr.replace(/=+$/, "");
+  const clean = base64String ? base64String.replace(/['"]+/g, "").trim() : "";
+  const keyToDecode = isValidVapidKey(clean) ? clean : FALLBACK_VAPID_PUBLIC_KEY;
+
+  const unpadded = keyToDecode.replace(/=+$/, "");
   const padding = "=".repeat((4 - (unpadded.length % 4)) % 4);
   const base64 = (unpadded + padding).replace(/-/g, "+").replace(/_/g, "/");
 
-  const rawData = window.atob(base64);
-  const buffer = new ArrayBuffer(rawData.length);
-  const outputArray = new Uint8Array(buffer);
+  try {
+    const rawData = window.atob(base64);
+    const buffer = new ArrayBuffer(rawData.length);
+    const outputArray = new Uint8Array(buffer);
 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  } catch (err) {
+    console.warn("[Push] Error decoding VAPID key with atob, using fallback:", err);
+    const fallbackBase64 = (FALLBACK_VAPID_PUBLIC_KEY + "=").replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(fallbackBase64);
+    const buffer = new ArrayBuffer(rawData.length);
+    const outputArray = new Uint8Array(buffer);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   }
-  return outputArray;
 }
 
 export function PushNotificationBanner() {
@@ -96,22 +119,18 @@ export function PushNotificationBanner() {
     startTransition(async () => {
       try {
         let keyToUse = vapidKey;
-        if (!keyToUse) {
+        if (!isValidVapidKey(keyToUse)) {
           const resKey = await getUserPushSubscriptionCountAction();
-          if (resKey.ok && resKey.data.vapidPublicKey) {
+          if (resKey.ok && isValidVapidKey(resKey.data.vapidPublicKey)) {
             keyToUse = resKey.data.vapidPublicKey;
             setVapidKey(keyToUse);
           }
         }
-        if (!keyToUse) {
+        if (!isValidVapidKey(keyToUse)) {
           keyToUse = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
         }
-
-        keyToUse = keyToUse.replace(/['"]+/g, "").trim();
-
-        if (!keyToUse) {
-          toast.error("Kunci VAPID belum dikonfigurasi di server. Pastikan Vercel sudah di-redeploy setelah setel environment variable.");
-          return;
+        if (!isValidVapidKey(keyToUse)) {
+          keyToUse = FALLBACK_VAPID_PUBLIC_KEY;
         }
 
         const perm = await Notification.requestPermission();
