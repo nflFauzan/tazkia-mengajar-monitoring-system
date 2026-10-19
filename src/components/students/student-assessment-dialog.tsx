@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Award,
+  BookOpen,
+  Check,
   CheckCircle2,
   Clock,
+  Layers,
   Loader2,
+  PenLine,
   Plus,
+  Search,
+  Sparkles,
   Trash2,
   User,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatTanggalSingkat } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import {
   deleteStudentAssessmentAction,
   getStudentAssessmentsAction,
@@ -45,6 +53,8 @@ export interface MaterialOption {
   title: string;
   meetingLabel: string | null;
   curriculumName: string;
+  periodName?: string | null;
+  objective?: string | null;
 }
 
 interface StudentAssessmentDialogProps {
@@ -55,17 +65,37 @@ interface StudentAssessmentDialogProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: "Tuntas", label: "Tuntas", color: "bg-green-600 text-white" },
-  { value: "Lancar", label: "Lancar", color: "bg-blue-600 text-white" },
-  { value: "Cukup", label: "Cukup", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  { value: "Perlu Bimbingan", label: "Perlu Bimbingan", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+  {
+    value: "Tuntas",
+    label: "Tuntas",
+    activeClass: "bg-emerald-600 text-white ring-2 ring-emerald-600/30",
+    badgeClass: "bg-emerald-600 text-white",
+  },
+  {
+    value: "Lancar",
+    label: "Lancar",
+    activeClass: "bg-blue-600 text-white ring-2 ring-blue-600/30",
+    badgeClass: "bg-blue-600 text-white",
+  },
+  {
+    value: "Cukup",
+    label: "Cukup",
+    activeClass: "bg-amber-600 text-white ring-2 ring-amber-600/30",
+    badgeClass: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  },
+  {
+    value: "Perlu Bimbingan",
+    label: "Perlu Bimbingan",
+    activeClass: "bg-rose-600 text-white ring-2 ring-rose-600/30",
+    badgeClass: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
+  },
 ];
 
 export function StudentAssessmentDialog({
   studentId,
   studentName,
   groupName,
-  materials,
+  materials = [],
 }: StudentAssessmentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -73,11 +103,100 @@ export function StudentAssessmentDialog({
   const [assessments, setAssessments] = useState<StudentAssessmentItem[]>([]);
   const [isPending, startTransition] = useTransition();
 
+  // Mode: CURRICULUM vs CUSTOM
+  const [mode, setMode] = useState<"CURRICULUM" | "CUSTOM">(
+    materials.length > 0 ? "CURRICULUM" : "CUSTOM"
+  );
+
   // Form state
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string>("CUSTOM");
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(
+    materials[0]?.id ?? null
+  );
+  const [selectedMeeting, setSelectedMeeting] = useState<string>("ALL");
+  const [selectedCurriculum, setSelectedCurriculum] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [status, setStatus] = useState("Tuntas");
   const [notes, setNotes] = useState("");
+
+  // Extract unique meeting labels sorted naturally (e.g. Pertemuan 1, Pertemuan 2, ...)
+  const meetingOptions = useMemo(() => {
+    const set = new Set<string>();
+    let hasNoMeeting = false;
+    for (const m of materials) {
+      if (m.meetingLabel) {
+        set.add(m.meetingLabel);
+      } else {
+        hasNoMeeting = true;
+      }
+    }
+    const sorted = Array.from(set).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    );
+    return {
+      meetings: sorted,
+      hasNoMeeting,
+    };
+  }, [materials]);
+
+  // Extract unique curriculum names
+  const curriculumOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of materials) {
+      if (m.curriculumName) {
+        set.add(m.curriculumName);
+      }
+    }
+    return Array.from(set).sort();
+  }, [materials]);
+
+  // Filtered materials based on meeting filter, curriculum filter, and search text
+  const filteredMaterials = useMemo(() => {
+    return materials.filter((m) => {
+      if (selectedMeeting !== "ALL") {
+        if (selectedMeeting === "UNASSIGNED") {
+          if (m.meetingLabel) return false;
+        } else if (m.meetingLabel !== selectedMeeting) {
+          return false;
+        }
+      }
+
+      if (selectedCurriculum !== "ALL" && m.curriculumName !== selectedCurriculum) {
+        return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchTitle = m.title.toLowerCase().includes(q);
+        const matchMeeting = m.meetingLabel?.toLowerCase().includes(q);
+        const matchObj = m.objective?.toLowerCase().includes(q);
+        const matchCurriculum = m.curriculumName.toLowerCase().includes(q);
+        if (!matchTitle && !matchMeeting && !matchObj && !matchCurriculum) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [materials, selectedMeeting, selectedCurriculum, searchQuery]);
+
+  // Find currently selected material
+  const selectedMaterial = useMemo(() => {
+    if (!selectedMaterialId) return null;
+    return materials.find((m) => m.id === selectedMaterialId) ?? null;
+  }, [materials, selectedMaterialId]);
+
+  function handleSelectMeeting(meeting: string) {
+    setSelectedMeeting(meeting);
+    if (meeting !== "ALL") {
+      const firstInMeeting = materials.find((m) =>
+        meeting === "UNASSIGNED" ? !m.meetingLabel : m.meetingLabel === meeting
+      );
+      if (firstInMeeting) {
+        setSelectedMaterialId(firstInMeeting.id);
+      }
+    }
+  }
 
   async function handleOpenChange(newOpen: boolean) {
     setOpen(newOpen);
@@ -92,29 +211,33 @@ export function StudentAssessmentDialog({
   }
 
   function handleSave() {
-    const isCustom = selectedMaterialId === "CUSTOM";
-    if (isCustom && !customTitle.trim()) {
-      toast.error("Mohon isi judul materi atau topik capaian.");
-      return;
+    if (mode === "CUSTOM") {
+      if (!customTitle.trim()) {
+        toast.error("Mohon isi nama topik atau materi capaian.");
+        return;
+      }
+    } else {
+      if (!selectedMaterialId) {
+        toast.error("Mohon pilih salah satu materi kurikulum.");
+        return;
+      }
     }
 
     startTransition(async () => {
       const res = await saveStudentAssessmentAction({
         studentId,
-        materialId: isCustom ? null : selectedMaterialId,
-        customTitle: isCustom ? customTitle.trim() : null,
+        materialId: mode === "CURRICULUM" ? selectedMaterialId : null,
+        customTitle: mode === "CUSTOM" ? customTitle.trim() : null,
         status,
         notes: notes.trim() || null,
       });
 
       if (res.ok) {
         toast.success("Penilaian capaian berhasil disimpan!");
-        // Refresh local history
         const updated = await getStudentAssessmentsAction(studentId);
         if (updated.ok) {
           setAssessments(updated.data);
         }
-        // Reset form
         setCustomTitle("");
         setNotes("");
         router.refresh();
@@ -140,7 +263,7 @@ export function StudentAssessmentDialog({
   function getStatusBadge(statusVal: string) {
     const found = STATUS_OPTIONS.find((s) => s.value === statusVal);
     if (found) {
-      return <Badge className={found.color}>{found.label}</Badge>;
+      return <Badge className={found.badgeClass}>{found.label}</Badge>;
     }
     return <Badge variant="secondary">{statusVal}</Badge>;
   }
@@ -158,7 +281,7 @@ export function StudentAssessmentDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="outline" className="text-xs">
@@ -170,87 +293,376 @@ export function StudentAssessmentDialog({
               Penilaian & Capaian Murid: {studentName}
             </DialogTitle>
             <DialogDescription>
-              Catat kemajuan dan penguasaan materi kurikulum oleh murid.
+              Catat kemajuan dan penguasaan materi kurikulum oleh murid secara berkala.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-2">
             {/* Form Input Penilaian Baru */}
-            <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-4">
-              <div className="flex items-center gap-1.5 font-semibold text-xs tracking-tight text-primary">
-                <Plus className="size-4" />
-                <span>INPUT CAPAIAN BARU</span>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="materialSelect" className="text-xs">
-                  Materi Kurikulum
-                </Label>
-                <Select
-                  value={selectedMaterialId}
-                  onValueChange={(val) => setSelectedMaterialId(val ?? "CUSTOM")}
-                  disabled={isPending}
-                >
-                  <SelectTrigger id="materialSelect" className="bg-background">
-                    <SelectValue placeholder="Pilih materi kurikulum..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CUSTOM">
-                      &mdash; Materi / Topik Lain (Manual) &mdash;
-                    </SelectItem>
-                    {materials.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        [{m.curriculumName}] {m.meetingLabel ? `${m.meetingLabel} - ` : ""}{m.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedMaterialId === "CUSTOM" ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="customTitle" className="text-xs">
-                    Nama Topik / Materi <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="customTitle"
-                    placeholder="Contoh: Hafalan Surat Al-Fatihah, Membaca Iqro 2 Hal 10..."
-                    value={customTitle}
-                    onChange={(e) => setCustomTitle(e.target.value)}
-                    disabled={isPending}
-                    className="bg-background text-xs"
-                  />
+            <div className="rounded-xl border-2 border-primary/25 bg-primary/5 p-4 sm:p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-primary/15">
+                <div className="flex items-center gap-1.5 font-bold text-xs tracking-wider text-primary uppercase">
+                  <Plus className="size-4" />
+                  <span>Input Capaian Baru</span>
                 </div>
-              ) : null}
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Tingkat Penguasaan / Status</Label>
-                <div className="flex flex-wrap gap-2">
-                  {STATUS_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
+                {/* Tab Mode: Kurikulum vs Manual */}
+                <div className="inline-flex p-1 bg-background border border-border/80 rounded-lg text-xs self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setMode("CURRICULUM")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all",
+                      mode === "CURRICULUM"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <BookOpen className="size-3.5" />
+                    <span>Materi Kurikulum</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("CUSTOM")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-md font-medium transition-all",
+                      mode === "CUSTOM"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <PenLine className="size-3.5" />
+                    <span>Topik Bebas / Mandiri</span>
+                  </button>
+                </div>
+              </div>
+
+              {mode === "CURRICULUM" ? (
+                <div className="space-y-3">
+                  {materials.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                      Belum ada materi kurikulum aktif. Silakan gunakan opsi Topik Bebas / Mandiri.
+                    </div>
+                  ) : (
+                    <>
+                      {/* 1. Pilih Pertemuan (Meeting Chips) */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                            <Layers className="size-3.5 text-primary" />
+                            <span>Pilih Pertemuan:</span>
+                          </Label>
+                          {selectedMeeting !== "ALL" && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMeeting("ALL")}
+                              className="text-[11px] text-primary hover:underline font-medium"
+                            >
+                              Tampilkan Semua Pertemuan
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Scrollable Meeting Chips */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectMeeting("ALL")}
+                            className={cn(
+                              "px-2.5 py-1 rounded-full text-xs shrink-0 transition-all font-medium border",
+                              selectedMeeting === "ALL"
+                                ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
+                                : "bg-background text-muted-foreground hover:bg-muted border-border"
+                            )}
+                          >
+                            Semua ({materials.length})
+                          </button>
+                          {meetingOptions.meetings.map((meeting) => {
+                            const count = materials.filter(
+                              (m) => m.meetingLabel === meeting
+                            ).length;
+                            const isSelected = selectedMeeting === meeting;
+                            return (
+                              <button
+                                key={meeting}
+                                type="button"
+                                onClick={() => handleSelectMeeting(meeting)}
+                                className={cn(
+                                  "px-2.5 py-1 rounded-full text-xs shrink-0 transition-all font-medium border flex items-center gap-1.5",
+                                  isSelected
+                                    ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
+                                    : "bg-background text-muted-foreground hover:bg-muted border-border"
+                                )}
+                              >
+                                <span>{meeting}</span>
+                                <span
+                                  className={cn(
+                                    "text-[10px] px-1.5 py-0.2 rounded-full",
+                                    isSelected
+                                      ? "bg-primary-foreground/20 text-primary-foreground"
+                                      : "bg-muted text-muted-foreground"
+                                  )}
+                                >
+                                  {count}
+                                </span>
+                              </button>
+                            );
+                          })}
+                          {meetingOptions.hasNoMeeting && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectMeeting("UNASSIGNED")}
+                              className={cn(
+                                "px-2.5 py-1 rounded-full text-xs shrink-0 transition-all font-medium border",
+                                selectedMeeting === "UNASSIGNED"
+                                  ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
+                                  : "bg-background text-muted-foreground hover:bg-muted border-border"
+                              )}
+                            >
+                              Umum / Lainnya
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 2. Filter Bar: Search Box & Curriculum Filter */}
+                      <div className="flex flex-col sm:flex-row gap-2 pt-0.5">
+                        <div className="relative flex-1">
+                          <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                          <Input
+                            placeholder="Cari materi kurikulum (contoh: wudhu, sholat, adab)..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-8 pr-7 h-8 text-xs bg-background"
+                          />
+                          {searchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery("")}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                              title="Hapus pencarian"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        {curriculumOptions.length > 1 && (
+                          <div className="w-full sm:w-52">
+                            <Select
+                              value={selectedCurriculum}
+                              onValueChange={(val) =>
+                                setSelectedCurriculum(val ?? "ALL")
+                              }
+                            >
+                              <SelectTrigger className="w-full h-8 text-xs bg-background">
+                                <SelectValue placeholder="Pilih Kurikulum" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ALL">Semua Kurikulum</SelectItem>
+                                {curriculumOptions.map((c) => (
+                                  <SelectItem key={c} value={c}>
+                                    {c}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3. Daftar Kartu Materi yang Tersedia */}
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground text-[11px]">
+                            {selectedMeeting !== "ALL"
+                              ? `Materi pada ${selectedMeeting}:`
+                              : "Daftar Semua Materi Kurikulum:"}
+                          </span>
+                          <span className="text-[11px]">
+                            {filteredMaterials.length} materi tersedia
+                          </span>
+                        </div>
+
+                        {filteredMaterials.length === 0 ? (
+                          <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground space-y-2 bg-background/50">
+                            <p>Tidak ada materi yang sesuai dengan pencarian atau filter.</p>
+                            {(selectedMeeting !== "ALL" || searchQuery) && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedMeeting("ALL");
+                                  setSearchQuery("");
+                                }}
+                                className="h-7 text-xs"
+                              >
+                                Tampilkan Semua Materi
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                            {filteredMaterials.map((m) => {
+                              const isSelected = selectedMaterialId === m.id;
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => setSelectedMaterialId(m.id)}
+                                  className={cn(
+                                    "w-full text-left p-2.5 rounded-lg border transition-all flex items-start justify-between gap-3 group",
+                                    isSelected
+                                      ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary"
+                                      : "bg-background border-border hover:border-primary/50 hover:bg-muted/40"
+                                  )}
+                                >
+                                  <div className="min-w-0 space-y-1 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      {m.meetingLabel ? (
+                                        <Badge
+                                          variant={isSelected ? "default" : "secondary"}
+                                          className="text-[10px] px-1.5 py-0 h-4 font-semibold tracking-wide"
+                                        >
+                                          {m.meetingLabel}
+                                        </Badge>
+                                      ) : (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] px-1.5 py-0 h-4"
+                                        >
+                                          Umum
+                                        </Badge>
+                                      )}
+                                      <span
+                                        className={cn(
+                                          "text-xs font-semibold leading-tight",
+                                          isSelected ? "text-primary" : "text-foreground"
+                                        )}
+                                      >
+                                        {m.title}
+                                      </span>
+                                    </div>
+
+                                    {m.objective ? (
+                                      <p className="text-[11px] text-muted-foreground line-clamp-1 italic">
+                                        Tujuan: {m.objective}
+                                      </p>
+                                    ) : null}
+
+                                    <div className="text-[10px] text-muted-foreground/80 flex items-center gap-1.5">
+                                      <span>{m.curriculumName}</span>
+                                      {m.periodName ? (
+                                        <>
+                                          <span>&bull;</span>
+                                          <span>{m.periodName}</span>
+                                        </>
+                                      ) : null}
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 mt-0.5">
+                                    {isSelected ? (
+                                      <div className="size-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                                        <Check className="size-3 stroke-[3]" />
+                                      </div>
+                                    ) : (
+                                      <div className="size-5 rounded-full border border-border group-hover:border-primary/50" />
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 4. Banner Konfirmasi Materi Terpilih */}
+                      {selectedMaterial && (
+                        <div className="rounded-lg bg-background border border-primary/40 p-2.5 flex items-center justify-between text-xs shadow-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CheckCircle2 className="size-4 text-primary shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                                Materi Terpilih:
+                              </span>
+                              <span className="font-bold text-foreground text-xs truncate block">
+                                {selectedMaterial.meetingLabel
+                                  ? `${selectedMaterial.meetingLabel}: `
+                                  : ""}
+                                {selectedMaterial.title}
+                              </span>
+                            </div>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px] shrink-0">
+                            {selectedMaterial.curriculumName}
+                          </Badge>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                /* Mode Topik Mandiri / Bebas */
+                <div className="space-y-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="customTitle" className="text-xs font-semibold">
+                      Nama Topik / Materi yang Dinilai <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="customTitle"
+                      placeholder="Contoh: Hafalan Surat An-Nas, Membaca Iqro 3 Hal 15..."
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
                       disabled={isPending}
-                      onClick={() => setStatus(opt.value)}
-                      className={`px-3 py-1 text-xs rounded-full border transition-all font-medium ${
-                        status === opt.value
-                          ? "ring-2 ring-primary ring-offset-1 bg-primary text-primary-foreground font-semibold"
-                          : "bg-background hover:bg-muted text-muted-foreground border-border"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                      className="bg-background text-xs"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Gunakan mode ini jika materi yang dinilai di luar matriks kurikulum utama, atau merupakan evaluasi hafalan/target individual murid.
+                  </p>
+                </div>
+              )}
+
+              {/* Tingkat Penguasaan / Status */}
+              <div className="space-y-1.5 pt-1 border-t border-border/40">
+                <Label className="text-xs font-semibold">Tingkat Penguasaan / Status</Label>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((opt) => {
+                    const isSelected = status === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => setStatus(opt.value)}
+                        className={cn(
+                          "px-3 py-1.5 text-xs rounded-lg border transition-all font-semibold flex items-center gap-1.5",
+                          isSelected
+                            ? opt.activeClass
+                            : "bg-background hover:bg-muted text-foreground border-border"
+                        )}
+                      >
+                        {isSelected && <Sparkles className="size-3" />}
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* Catatan Pengajar */}
               <div className="space-y-1.5">
-                <Label htmlFor="notes" className="text-xs">
-                  Catatan Pengajar <span className="text-muted-foreground font-normal text-[11px]">(opsional)</span>
+                <Label htmlFor="notes" className="text-xs font-semibold">
+                  Catatan Pengajar{" "}
+                  <span className="text-muted-foreground font-normal text-[11px]">
+                    (opsional)
+                  </span>
                 </Label>
                 <Textarea
                   id="notes"
-                  placeholder="Catatan kemajuan atau hal yang perlu ditingkatkan oleh murid..."
+                  placeholder="Catatan kemajuan, evaluasi bacaan/hafalan, atau hal yang perlu ditingkatkan oleh murid..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
@@ -259,12 +671,13 @@ export function StudentAssessmentDialog({
                 />
               </div>
 
+              {/* Tombol Simpan */}
               <div className="flex justify-end pt-1">
                 <Button
                   size="sm"
                   onClick={handleSave}
                   disabled={isPending}
-                  className="gap-1.5 text-xs h-8"
+                  className="gap-1.5 text-xs h-9 px-4 font-bold shadow-xs"
                 >
                   {isPending ? (
                     <Loader2 className="size-3.5 animate-spin" />
@@ -291,52 +704,87 @@ export function StudentAssessmentDialog({
                   Memuat riwayat capaian...
                 </div>
               ) : assessments.length === 0 ? (
-                <div className="rounded-md border border-dashed p-6 text-center text-xs text-muted-foreground">
+                <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground bg-muted/20">
                   Belum ada catatan capaian untuk murid ini.
                 </div>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {assessments.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-md border bg-card p-3 flex items-start justify-between gap-3 text-xs"
-                    >
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-sm">
-                            {item.materialTitle ?? item.customTitle}
-                          </span>
-                          {getStatusBadge(item.status)}
-                        </div>
+                  {assessments.map((item) => {
+                    const hasMeeting = item.materialTitle?.includes(" — ");
+                    const meetingPart = hasMeeting
+                      ? item.materialTitle?.split(" — ")[0]
+                      : null;
+                    const titlePart = hasMeeting
+                      ? item.materialTitle?.split(" — ").slice(1).join(" — ")
+                      : item.materialTitle;
 
-                        {item.notes ? (
-                          <p className="text-muted-foreground italic bg-muted/40 p-2 rounded text-[11px]">
-                            &ldquo;{item.notes}&rdquo;
-                          </p>
-                        ) : null}
-
-                        <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-1">
-                          <span className="flex items-center gap-1">
-                            <User className="size-3" />
-                            {item.assessedByName}
-                          </span>
-                          <span>&bull;</span>
-                          <span>{formatTanggalSingkat(item.createdAt)}</span>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={isPending}
-                        onClick={() => handleDelete(item.id)}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                        title="Hapus penilaian"
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border bg-card p-3 flex items-start justify-between gap-3 text-xs shadow-xs"
                       >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {meetingPart ? (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-4 font-semibold text-primary border-primary/40 bg-primary/5"
+                              >
+                                {meetingPart}
+                              </Badge>
+                            ) : item.customTitle ? (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0 h-4"
+                              >
+                                Topik Bebas
+                              </Badge>
+                            ) : null}
+
+                            <span className="font-bold text-foreground text-xs sm:text-sm">
+                              {titlePart ?? item.customTitle}
+                            </span>
+
+                            {getStatusBadge(item.status)}
+                          </div>
+
+                          {item.notes ? (
+                            <p className="text-muted-foreground italic bg-muted/40 p-2 rounded text-[11px] border border-border/40">
+                              &ldquo;{item.notes}&rdquo;
+                            </p>
+                          ) : null}
+
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground pt-0.5">
+                            <span className="flex items-center gap-1 font-medium">
+                              <User className="size-3" />
+                              {item.assessedByName}
+                            </span>
+                            <span>&bull;</span>
+                            <span>{formatTanggalSingkat(item.createdAt)}</span>
+                            {item.curriculumName && (
+                              <>
+                                <span>&bull;</span>
+                                <span className="text-[10px] text-muted-foreground/80">
+                                  {item.curriculumName}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isPending}
+                          onClick={() => handleDelete(item.id)}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                          title="Hapus penilaian"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

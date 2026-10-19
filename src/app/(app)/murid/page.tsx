@@ -81,8 +81,10 @@ export default async function MuridPage({ searchParams }: PageProps<"/murid">) {
       id: true,
       title: true,
       meetingLabel: true,
+      objective: true,
       period: {
         select: {
+          name: true,
           curriculum: {
             select: { name: true },
           },
@@ -96,6 +98,8 @@ export default async function MuridPage({ searchParams }: PageProps<"/murid">) {
     title: m.title,
     meetingLabel: m.meetingLabel,
     curriculumName: m.period.curriculum.name,
+    periodName: m.period.name,
+    objective: m.objective,
   }));
 
   // 2. Fetch all active groups for AddStudentButton
