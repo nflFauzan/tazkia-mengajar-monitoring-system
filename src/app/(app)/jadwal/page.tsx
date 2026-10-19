@@ -11,6 +11,7 @@ import {
   AddScheduleButton,
   ScheduleRowActions,
 } from "@/components/schedules/schedule-manager";
+import { AdminScheduleReminderButton } from "@/components/notifications/admin-reminder-button";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -130,6 +131,7 @@ export default async function JadwalPage({
         actions={
           isAdmin ? (
             <>
+              <AdminScheduleReminderButton />
               <ButtonLink href="/jadwal/kalender" variant="outline">
                 Kalender
               </ButtonLink>

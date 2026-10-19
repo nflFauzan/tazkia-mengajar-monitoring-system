@@ -38,6 +38,8 @@ import { StudentAttendanceDialog } from "@/components/attendance/student-attenda
 import { OnboardingDialog } from "@/components/common/onboarding-dialog";
 import { getContentIdeas } from "@/server/services/content-ideas";
 import type { ContentIdeaItem } from "@/server/services/content-ideas";
+import { PushNotificationBanner } from "@/components/notifications/push-notification-banner";
+import { AdminScheduleReminderButton } from "@/components/notifications/admin-reminder-button";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -75,6 +77,7 @@ export default async function DashboardPage() {
         description="Ringkasan kegiatan Tazkia Mengajar."
         actions={
           <>
+            <AdminScheduleReminderButton />
             <ButtonLink href="/kegiatan/baru">
               <Plus className="size-4" />
               Tambah Kegiatan
@@ -85,6 +88,8 @@ export default async function DashboardPage() {
           </>
         }
       />
+
+      <PushNotificationBanner />
 
       {pendingAppeals.length > 0 ? (
         <div className="mb-6">
@@ -341,6 +346,8 @@ function PengajarDashboard({
           </>
         }
       />
+
+      <PushNotificationBanner />
 
       {hasUnattendedToday ? (
         <div className="mb-6 rounded-lg border-2 border-primary bg-primary/10 p-4 shadow-[var(--shadow-brutal-sm)]">
