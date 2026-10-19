@@ -63,6 +63,9 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
         address: true,
         category: true,
         description: true,
+        latitude: true,
+        longitude: true,
+        radiusMeters: true,
         isActive: true,
       },
     }),
@@ -103,6 +106,7 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
                 <TableHead>Mitra</TableHead>
                 <TableHead className="hidden md:table-cell">Kategori</TableHead>
                 <TableHead className="hidden lg:table-cell">Alamat</TableHead>
+                <TableHead className="hidden sm:table-cell">Geofence</TableHead>
                 <TableHead>Status</TableHead>
                 {isAdmin ? <TableHead className="w-20 text-right">Aksi</TableHead> : null}
               </TableRow>
@@ -117,6 +121,16 @@ export default async function TempatPage({ searchParams }: PageProps<"/tempat">)
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden max-w-xs truncate lg:table-cell">
                     {location.address}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {location.latitude != null && location.longitude != null ? (
+                      <Badge variant="outline" className="gap-1 border-primary/40 text-primary">
+                        <MapPin className="size-3" />
+                        {location.radiusMeters}m
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs italic">Bebas</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {location.isActive ? (

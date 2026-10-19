@@ -6,6 +6,9 @@ export interface PengajarSession {
   scheduleId: string | null;
   title: string;
   locationName: string;
+  locationLatitude?: number | null;
+  locationLongitude?: number | null;
+  locationRadiusMeters?: number;
   partner: string;
   date: Date;
   dateStr: string;
@@ -13,6 +16,7 @@ export interface PengajarSession {
   endTime: string;
   currentAttendance: "HADIR" | "IZIN" | "SAKIT" | "ALPA" | null;
   checkedInAt: Date | null;
+  checkInDistanceMeters?: number | null;
   note: string | null;
   isToday: boolean;
   canCheckInHadir: boolean;
@@ -89,12 +93,20 @@ export async function getPengajarAttendanceSessions(
       ],
     },
     include: {
-      location: { select: { name: true } },
+      location: {
+        select: {
+          name: true,
+          latitude: true,
+          longitude: true,
+          radiusMeters: true,
+        },
+      },
       teamMembers: {
         where: { teamMemberId },
         select: {
           attendance: true,
           checkedInAt: true,
+          checkInDistanceMeters: true,
           note: true,
         },
       },
@@ -123,6 +135,9 @@ export async function getPengajarAttendanceSessions(
       scheduleId: act.scheduleId,
       title: `Kegiatan ${act.location.name}`,
       locationName: act.location.name,
+      locationLatitude: act.location.latitude,
+      locationLongitude: act.location.longitude,
+      locationRadiusMeters: act.location.radiusMeters,
       partner: act.partner,
       date: act.date,
       dateStr,
@@ -130,6 +145,7 @@ export async function getPengajarAttendanceSessions(
       endTime: act.endTime,
       currentAttendance: teamRecord?.attendance ?? null,
       checkedInAt: teamRecord?.checkedInAt ?? null,
+      checkInDistanceMeters: teamRecord?.checkInDistanceMeters ?? null,
       note: teamRecord?.note ?? null,
       isToday,
       canCheckInHadir: isToday,
@@ -149,7 +165,15 @@ export async function getPengajarAttendanceSessions(
       ],
     },
     include: {
-      location: { select: { name: true, partner: true } },
+      location: {
+        select: {
+          name: true,
+          partner: true,
+          latitude: true,
+          longitude: true,
+          radiusMeters: true,
+        },
+      },
     },
   });
 
@@ -190,6 +214,9 @@ export async function getPengajarAttendanceSessions(
           scheduleId: sch.id,
           title: sch.title,
           locationName: sch.location.name,
+          locationLatitude: sch.location.latitude,
+          locationLongitude: sch.location.longitude,
+          locationRadiusMeters: sch.location.radiusMeters,
           partner: sch.location.partner,
           date: todayDate,
           dateStr: todayStr,
@@ -197,6 +224,7 @@ export async function getPengajarAttendanceSessions(
           endTime: sch.endTime,
           currentAttendance: null,
           checkedInAt: null,
+          checkInDistanceMeters: null,
           note: null,
           isToday: true,
           canCheckInHadir: true,
@@ -247,6 +275,9 @@ export async function getPengajarAttendanceSessions(
         scheduleId: occ.scheduleId,
         title: occ.title,
         locationName: occ.locationName,
+        locationLatitude: schedule?.location.latitude ?? null,
+        locationLongitude: schedule?.location.longitude ?? null,
+        locationRadiusMeters: schedule?.location.radiusMeters ?? 100,
         partner: schedule?.location.partner ?? "",
         date: occDate,
         dateStr: occ.dateKey,
@@ -254,6 +285,7 @@ export async function getPengajarAttendanceSessions(
         endTime: occ.endTime,
         currentAttendance: null,
         checkedInAt: null,
+        checkInDistanceMeters: null,
         note: null,
         isToday: false,
         canCheckInHadir: false,
@@ -333,6 +365,7 @@ export async function getPengajarAttendanceSessions(
       activityId: true,
       attendance: true,
       checkedInAt: true,
+      checkInDistanceMeters: true,
       note: true,
       activity: {
         select: {
@@ -380,6 +413,7 @@ export async function getPengajarAttendanceSessions(
       endTime: item.activity.endTime,
       attendance: item.attendance,
       checkedInAt: item.checkedInAt,
+      checkInDistanceMeters: item.checkInDistanceMeters,
       note: item.note,
       appealStatus: appeal?.status ?? null,
       appealReason: appeal?.reason ?? null,

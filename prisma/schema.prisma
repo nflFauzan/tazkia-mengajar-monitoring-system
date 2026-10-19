@@ -112,8 +112,11 @@ model Location {
   partner     String
   address     String
   category    String
-  description String?
-  isActive    Boolean @default(true)
+  description  String?
+  latitude     Float?
+  longitude    Float?
+  radiusMeters Int     @default(100)
+  isActive     Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -386,8 +389,11 @@ model ActivityTeamMember {
   note         String?
   /// Preserves the order the admin chose, because the report lists the team in
   /// that order (PRD 18).
-  orderIndex   Int              @default(0)
-  checkedInAt  DateTime?
+  orderIndex            Int              @default(0)
+  checkedInAt           DateTime?
+  checkInLatitude       Float?
+  checkInLongitude      Float?
+  checkInDistanceMeters Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

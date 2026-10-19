@@ -26,6 +26,19 @@ const requiredText = (max: number, label: string) =>
     .min(1, `${label} wajib diisi.`)
     .max(max, `${label} terlalu panjang.`);
 
+const optionalCoordinate = (min: number, max: number, label: string) =>
+  z.preprocess((val) => {
+    if (val === "" || val === null || val === undefined) return null;
+    const num = typeof val === "string" ? parseFloat(val.trim()) : Number(val);
+    return isNaN(num) ? undefined : num;
+  }, z.number().min(min, `${label} minimal ${min}.`).max(max, `${label} maksimal ${max}.`).nullable().optional());
+
+const optionalRadius = z.preprocess((val) => {
+  if (val === "" || val === null || val === undefined) return 100;
+  const num = typeof val === "string" ? parseInt(val.trim(), 10) : Number(val);
+  return isNaN(num) ? 100 : num;
+}, z.number().int("Radius harus berupa bilangan bulat.").min(10, "Radius minimal 10 meter.").max(5000, "Radius maksimal 5000 meter.").default(100));
+
 // --------------------------------------------------------------------------
 // Location
 // --------------------------------------------------------------------------
@@ -36,6 +49,9 @@ export const locationSchema = z.object({
   address: requiredText(600, "Alamat"),
   category: requiredText(80, "Kategori"),
   description: optionalText(1000, "Deskripsi"),
+  latitude: optionalCoordinate(-90, 90, "Latitude"),
+  longitude: optionalCoordinate(-180, 180, "Longitude"),
+  radiusMeters: optionalRadius,
   isActive: z.boolean().default(true),
 });
 

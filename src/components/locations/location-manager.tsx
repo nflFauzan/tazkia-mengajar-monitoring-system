@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Crosshair,
+  ExternalLink,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
@@ -31,6 +42,9 @@ export interface LocationRow {
   address: string;
   category: string;
   description: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusMeters?: number;
   isActive: boolean;
 }
 
@@ -132,7 +146,21 @@ export function LocationRowActions({ location }: { location: LocationRow }) {
   );
 }
 
-function LocationFormDialog({
+function LocationFormDialog(props: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  location?: LocationRow;
+}) {
+  if (!props.open) return null;
+  return (
+    <LocationFormDialogInner
+      key={props.location?.id ?? "new"}
+      {...props}
+    />
+  );
+}
+
+function LocationFormDialogInner({
   open,
   onOpenChange,
   location,
@@ -142,6 +170,46 @@ function LocationFormDialog({
   location?: LocationRow;
 }) {
   const isEdit = Boolean(location);
+  const [lat, setLat] = useState<string>(
+    location?.latitude != null ? String(location.latitude) : "",
+  );
+  const [lng, setLng] = useState<string>(
+    location?.longitude != null ? String(location.longitude) : "",
+  );
+  const [radius, setRadius] = useState<string>(
+    location?.radiusMeters != null ? String(location.radiusMeters) : "100",
+  );
+  const [isLocating, setIsLocating] = useState(false);
+
+  function handleGetCurrentLocation() {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      toast.error("Browser tidak mendukung pendeteksian lokasi GPS.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsLocating(false);
+        setLat(pos.coords.latitude.toFixed(6));
+        setLng(pos.coords.longitude.toFixed(6));
+        toast.success("Koordinat lokasi Anda saat ini berhasil diisi!");
+      },
+      (err) => {
+        setIsLocating(false);
+        let msg = "Gagal mengambil koordinat lokasi.";
+        if (err.code === 1) {
+          msg = "Izin lokasi ditolak oleh browser.";
+        } else if (err.code === 2) {
+          msg = "Sinyal GPS tidak tersedia.";
+        } else if (err.code === 3) {
+          msg = "Waktu pencarian sinyal GPS habis.";
+        }
+        toast.error(msg);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }
 
   return (
     <FormDialog
@@ -189,6 +257,76 @@ function LocationFormDialog({
         label="Deskripsi"
         defaultValue={location?.description}
       />
+
+      {/* Geofencing & GPS coordinates */}
+      <div className="space-y-3 rounded-lg border p-3.5 bg-muted/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 font-medium text-xs">
+            <MapPin className="size-3.5 text-primary" />
+            <span>Validasi Lokasi Terkini (Geofencing GPS)</span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            disabled={isLocating}
+            onClick={handleGetCurrentLocation}
+          >
+            {isLocating ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Crosshair className="size-3" />
+            )}
+            Ambil Lokasi Saya
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-normal">
+          Pengajar hanya bisa presensi mandiri jika berada di dalam radius tempat ini. Kosongkan jika tempat belum memiliki titik koordinat.
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          <TextField
+            name="latitude"
+            label="Latitude"
+            value={lat}
+            onChange={(e) => setLat(e.target.value)}
+            placeholder="-6.589123"
+          />
+          <TextField
+            name="longitude"
+            label="Longitude"
+            value={lng}
+            onChange={(e) => setLng(e.target.value)}
+            placeholder="106.789123"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 items-end">
+          <TextField
+            name="radiusMeters"
+            label="Radius Toleransi (meter)"
+            value={radius}
+            onChange={(e) => setRadius(e.target.value)}
+            placeholder="100"
+            hint="Batas jarak check-in (default 100m)."
+          />
+          {lat && lng ? (
+            <div className="pb-2">
+              <a
+                href={`https://www.google.com/maps?q=${lat},${lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <ExternalLink className="size-3" />
+                Cek di Google Maps
+              </a>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       <ActiveField defaultChecked={location?.isActive ?? true} />
     </FormDialog>
   );

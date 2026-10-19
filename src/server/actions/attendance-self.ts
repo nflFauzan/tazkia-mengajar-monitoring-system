@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { parseDateInput } from "@/lib/dates";
+import { checkGeofence, formatDistance } from "@/lib/geo";
 import {
   calculateHoursUntilStart,
   getActivityStudentsForAttendance,
@@ -22,6 +23,9 @@ interface SelfCheckInInput {
   startTime: string;
   attendance: "HADIR" | "IZIN" | "SAKIT";
   note?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
 }
 
 export async function selfCheckInAction(
@@ -129,6 +133,7 @@ export async function selfCheckInAction(
     const activity = await prisma.activity.findUnique({
       where: { id: targetActivityId },
       include: {
+        location: true,
         schedule: {
           include: { teamMembers: true },
         },
@@ -146,6 +151,37 @@ export async function selfCheckInAction(
         !activity.schedule.teamMembers.some((tm) => tm.teamMemberId === teamMemberId)
       ) {
         return fail("Anda tidak terdaftar pada kegiatan ini.");
+      }
+    }
+
+    // Geofencing validation for HADIR
+    let checkInDistanceMeters: number | null = null;
+    if (input.attendance === "HADIR") {
+      const loc = activity.location;
+      if (loc.latitude != null && loc.longitude != null) {
+        if (input.latitude == null || input.longitude == null) {
+          return fail(
+            `Presensi hadir di "${loc.name}" mewajibkan verifikasi lokasi GPS. Harap aktifkan GPS dan izinkan browser mengakses lokasi Anda.`,
+          );
+        }
+
+        const geofence = checkGeofence(
+          loc.latitude,
+          loc.longitude,
+          input.latitude,
+          input.longitude,
+          loc.radiusMeters ?? 100,
+        );
+
+        checkInDistanceMeters = geofence.distanceMeters;
+
+        if (!geofence.isInside) {
+          const userDist = formatDistance(geofence.distanceMeters);
+          const maxRadius = formatDistance(geofence.radiusMeters);
+          return fail(
+            `Presensi ditolak. Anda terdeteksi berada di luar area mengajar (Jarak Anda: ~${userDist}, Batas toleransi: ${maxRadius}). Silakan lakukan presensi saat Anda telah tiba di lokasi mengajar (${loc.name}).`,
+          );
+        }
       }
     }
 
@@ -168,6 +204,10 @@ export async function selfCheckInAction(
           attendance: input.attendance,
           note: input.note ? input.note.trim() : null,
           checkedInAt: checkedInAt ?? existingRecord.checkedInAt,
+          checkInLatitude: input.latitude ?? existingRecord.checkInLatitude,
+          checkInLongitude: input.longitude ?? existingRecord.checkInLongitude,
+          checkInDistanceMeters:
+            checkInDistanceMeters ?? existingRecord.checkInDistanceMeters,
         },
       });
     } else {
@@ -178,6 +218,9 @@ export async function selfCheckInAction(
           attendance: input.attendance,
           note: input.note ? input.note.trim() : null,
           checkedInAt,
+          checkInLatitude: input.latitude ?? null,
+          checkInLongitude: input.longitude ?? null,
+          checkInDistanceMeters,
         },
       });
     }

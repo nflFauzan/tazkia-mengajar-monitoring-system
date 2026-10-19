@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatHariTanggal, formatTanggalSingkat } from "@/lib/dates";
+import { formatDistance } from "@/lib/geo";
 import { selfCheckInAction } from "@/server/actions/attendance-self";
 import type { PengajarSession } from "@/server/services/attendance-self";
 import { AttendanceAppealDialog } from "./attendance-appeal-dialog";
@@ -53,6 +54,7 @@ interface SelfAttendancePanelProps {
     endTime: string;
     attendance: "HADIR" | "IZIN" | "SAKIT" | "ALPA";
     checkedInAt: Date | null;
+    checkInDistanceMeters?: number | null;
     note: string | null;
     appealStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
     appealReason?: string | null;
@@ -69,6 +71,9 @@ export function SelfAttendancePanel({
 }: SelfAttendancePanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [locatingSessionKey, setLocatingSessionKey] = useState<string | null>(
+    null,
+  );
   const [selectedLocationFilter, setSelectedLocationFilter] = useState<string>("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeSession, setActiveSession] = useState<PengajarSession | null>(
@@ -78,8 +83,10 @@ export function SelfAttendancePanel({
   const [note, setNote] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  function handleCheckIn(session: PengajarSession) {
-    setErrorMessage(null);
+  function executeCheckIn(
+    session: PengajarSession,
+    coords?: { latitude: number; longitude: number; accuracy: number },
+  ) {
     startTransition(async () => {
       const result = await selfCheckInAction({
         activityId: session.activityId,
@@ -87,6 +94,9 @@ export function SelfAttendancePanel({
         dateStr: session.dateStr,
         startTime: session.startTime,
         attendance: "HADIR",
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+        accuracy: coords?.accuracy,
       });
 
       if (result.ok) {
@@ -96,6 +106,51 @@ export function SelfAttendancePanel({
         setErrorMessage(result.error ?? "Gagal mencatat presensi.");
       }
     });
+  }
+
+  function handleCheckIn(session: PengajarSession) {
+    setErrorMessage(null);
+
+    const requiresGps =
+      session.locationLatitude != null && session.locationLongitude != null;
+
+    if (requiresGps) {
+      if (typeof window === "undefined" || !("geolocation" in navigator)) {
+        const msg =
+          "Browser atau perangkat Anda tidak mendukung fitur lokasi GPS untuk melakukan presensi.";
+        setErrorMessage(msg);
+        toast.error(msg);
+        return;
+      }
+
+      setLocatingSessionKey(session.key);
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocatingSessionKey(null);
+          const { latitude, longitude, accuracy } = position.coords;
+          executeCheckIn(session, { latitude, longitude, accuracy });
+        },
+        (error) => {
+          setLocatingSessionKey(null);
+          let msg = "Gagal mendeteksi lokasi GPS Anda.";
+          if (error.code === 1) {
+            msg =
+              "Akses lokasi ditolak. Harap izinkan akses lokasi pada browser Anda agar dapat melakukan presensi hadir.";
+          } else if (error.code === 2) {
+            msg =
+              "Sinyal GPS tidak tersedia. Pastikan GPS perangkat Anda telah diaktifkan.";
+          } else if (error.code === 3) {
+            msg = "Waktu pencarian sinyal GPS habis. Silakan coba beberapa saat lagi.";
+          }
+          setErrorMessage(msg);
+          toast.error(msg);
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+      );
+    } else {
+      executeCheckIn(session);
+    }
   }
 
   function openLeaveDialog(
@@ -221,10 +276,21 @@ export function SelfAttendancePanel({
                       <h3 className="font-heading text-base tracking-tight">
                         {session.title}
                       </h3>
-                      <p className="text-muted-foreground flex items-center gap-1.5 text-xs mt-0.5">
-                        <MapPin className="size-3.5" />
-                        {session.locationName}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        <p className="text-muted-foreground flex items-center gap-1 text-xs">
+                          <MapPin className="size-3.5" />
+                          {session.locationName}
+                        </p>
+                        {session.locationLatitude != null &&
+                        session.locationLongitude != null ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] py-0 px-1 font-normal border-primary/40 text-primary"
+                          >
+                            GPS Maks. {session.locationRadiusMeters ?? 100}m
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
 
                     {session.currentAttendance ? (
@@ -270,6 +336,12 @@ export function SelfAttendancePanel({
                           ? `Check-in: ${formatTime(session.checkedInAt)} WIB`
                           : session.currentAttendance ?? "Belum Dicatat"}
                       </span>
+                      {session.currentAttendance === "HADIR" &&
+                      session.checkInDistanceMeters != null ? (
+                        <span className="text-[10px] text-muted-foreground block mt-0.5">
+                          Jarak: {formatDistance(session.checkInDistanceMeters)} dari lokasi
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -284,18 +356,29 @@ export function SelfAttendancePanel({
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
-                      disabled={isPending || session.currentAttendance === "HADIR"}
+                      disabled={
+                        isPending ||
+                        locatingSessionKey === session.key ||
+                        session.currentAttendance === "HADIR"
+                      }
                       onClick={() => handleCheckIn(session)}
                       className="gap-1.5"
                     >
-                      {isPending ? (
+                      {locatingSessionKey === session.key ? (
+                        <>
+                          <Loader2 className="size-3.5 animate-spin" />
+                          Mencari GPS...
+                        </>
+                      ) : isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />
                       ) : (
                         <CheckCircle2 className="size-3.5" />
                       )}
                       {session.currentAttendance === "HADIR"
                         ? "Sudah Hadir"
-                        : "Hadir Sekarang"}
+                        : locatingSessionKey === session.key
+                          ? ""
+                          : "Hadir Sekarang"}
                     </Button>
 
                     <StudentAttendanceDialog
@@ -496,9 +579,18 @@ export function SelfAttendancePanel({
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground hidden sm:table-cell text-xs">
-                      {item.checkedInAt
-                        ? `${formatTime(item.checkedInAt)} WIB`
-                        : "—"}
+                      {item.checkedInAt ? (
+                        <div>
+                          <span>{formatTime(item.checkedInAt)} WIB</span>
+                          {item.checkInDistanceMeters != null ? (
+                            <span className="block text-[10px] text-muted-foreground/80">
+                              (Jarak: {formatDistance(item.checkInDistanceMeters)})
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {item.note || "—"}

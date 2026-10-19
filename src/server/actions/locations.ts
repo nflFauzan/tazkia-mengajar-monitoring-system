@@ -25,6 +25,9 @@ function parseForm(formData: FormData) {
     address: formData.get("address"),
     category: formData.get("category"),
     description: formData.get("description") ?? undefined,
+    latitude: formData.get("latitude") || undefined,
+    longitude: formData.get("longitude") || undefined,
+    radiusMeters: formData.get("radiusMeters") || undefined,
     isActive: readCheckbox(formData, "isActive"),
   });
 }
