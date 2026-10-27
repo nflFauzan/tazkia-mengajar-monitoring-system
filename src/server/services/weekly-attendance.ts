@@ -129,6 +129,20 @@ export async function syncWeeklyAttendance(options?: {
     return { weeksEvaluated: 0, alpaCreated: 0, alpaRemoved: 0 };
   }
 
+  // Identify past activities where 0 volunteers were HADIR (empty / libur sessions).
+  // Sesi mengajar tanpa presensi hadir relawan dianggap libur dan tidak boleh memicu ALPA.
+  const emptyPastActivities = activities.filter(
+    (act) => !act.teamMembers.some((tm) => tm.attendance === "HADIR"),
+  );
+
+  if (emptyPastActivities.length > 0) {
+    const emptyIds = emptyPastActivities.map((a) => a.id);
+    await prisma.activity.updateMany({
+      where: { id: { in: emptyIds } },
+      data: { status: "CANCELLED" },
+    });
+  }
+
   // 2. Fetch all active team members
   const activeMembers = await prisma.teamMember.findMany({
     where: { isActive: true },
@@ -175,6 +189,15 @@ export async function syncWeeklyAttendance(options?: {
 
   const deleteIds: string[] = [];
 
+  // Purge any auto-ALPA on empty/libur activities
+  for (const emptyAct of emptyPastActivities) {
+    for (const tm of emptyAct.teamMembers) {
+      if (tm.attendance === "ALPA" && isAutoAlpaNote(tm.note)) {
+        deleteIds.push(tm.id);
+      }
+    }
+  }
+
   // 4. Evaluate each week
   for (const { range, activities: weekActivities } of weekMap.values()) {
     // Only evaluate weeks that are strictly past (Sunday has passed relative to todayWib)
@@ -182,6 +205,26 @@ export async function syncWeeklyAttendance(options?: {
     // If today is Monday or later relative to the week's Sunday:
     const isWeekFinished = range.end < todayWib;
     if (!isWeekFinished) {
+      continue;
+    }
+
+    // Active activities in this week: not CANCELLED and at least 1 volunteer HADIR
+    const weekActiveActivities = weekActivities.filter(
+      (act) =>
+        act.status !== "CANCELLED" &&
+        !emptyPastActivities.some((e) => e.id === act.id) &&
+        act.teamMembers.some((tm) => tm.attendance === "HADIR"),
+    );
+
+    // If no active teaching sessions happened in this week, the entire week was libur
+    if (weekActiveActivities.length === 0) {
+      for (const act of weekActivities) {
+        for (const tm of act.teamMembers) {
+          if (tm.attendance === "ALPA" && isAutoAlpaNote(tm.note)) {
+            deleteIds.push(tm.id);
+          }
+        }
+      }
       continue;
     }
 
@@ -203,6 +246,54 @@ export async function syncWeeklyAttendance(options?: {
         (tm) => tm.attendance === "IZIN" || tm.attendance === "SAKIT",
       );
 
+      // Assigned schedules for this member
+      const assignedScheduleIds = new Set(
+        member.scheduleAssignments.map((sa) => sa.scheduleId),
+      );
+
+      // Active activities in this week matching member's assigned schedules
+      const memberActiveActivities = weekActiveActivities.filter(
+        (act) =>
+          (act.scheduleId && assignedScheduleIds.has(act.scheduleId)) ||
+          act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id),
+      );
+
+      const hasSpecificSchedules =
+        assignedScheduleIds.size > 0 ||
+        weekActivities.some((act) =>
+          act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id),
+        );
+
+      // Schedule-Aware Exemption:
+      // If the member is assigned to specific schedule(s), but none of those schedules
+      // held an active session this week (e.g. Day 2 was libur), the member is exempt!
+      if (hasSpecificSchedules && memberActiveActivities.length === 0) {
+        const obsoleteAutoAlpas = memberAttendances.filter(
+          (tm) => tm.attendance === "ALPA" && isAutoAlpaNote(tm.note),
+        );
+        for (const alpa of obsoleteAutoAlpas) {
+          deleteIds.push(alpa.id);
+        }
+        continue;
+      }
+
+      // If the member has NO specific schedule assigned (open volunteer):
+      // Only evaluate if there was an open activity (schedule with 0 assigned members)
+      if (!hasSpecificSchedules) {
+        const openActiveActivities = weekActiveActivities.filter(
+          (act) => !act.schedule || act.schedule.teamMembers.length === 0,
+        );
+        if (openActiveActivities.length === 0) {
+          const obsoleteAutoAlpas = memberAttendances.filter(
+            (tm) => tm.attendance === "ALPA" && isAutoAlpaNote(tm.note),
+          );
+          for (const alpa of obsoleteAutoAlpas) {
+            deleteIds.push(alpa.id);
+          }
+          continue;
+        }
+      }
+
       if (hasHadir || hasExcused) {
         // If the member fulfilled the weekly duty or had an excuse,
         // remove any auto-generated ALPA that might have been created previously.
@@ -219,21 +310,16 @@ export async function syncWeeklyAttendance(options?: {
         );
 
         if (existingAlpas.length === 0) {
-          // Choose the most appropriate activity to record ALPA on:
+          // Choose the most appropriate active activity to record ALPA on:
           // Priority 1: Activity matching member's assigned schedule
-          // Priority 2: First activity of the week
+          // Priority 2: Open activity
+          // Priority 3: First active activity of the week
           const targetActivity =
-            weekActivities.find((act) =>
-              act.schedule?.teamMembers.some(
-                (tm) => tm.teamMemberId === member.id,
-              ),
+            memberActiveActivities[0] ??
+            weekActiveActivities.find(
+              (act) => !act.schedule || act.schedule.teamMembers.length === 0,
             ) ??
-            weekActivities.find((act) =>
-              member.scheduleAssignments.some(
-                (sa) => sa.scheduleId === act.schedule?.id,
-              ),
-            ) ??
-            weekActivities[0];
+            weekActiveActivities[0];
 
           creates.push({
             activityId: targetActivity.id,

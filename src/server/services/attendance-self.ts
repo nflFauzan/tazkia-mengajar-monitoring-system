@@ -306,21 +306,31 @@ export async function getPengajarAttendanceSessions(
     );
 
   // 3. Auto-ALPA: past activities where member was assigned but has no attendance recorded
+  // Only applies if the activity actually took place (at least 1 volunteer was HADIR).
+  // If 0 volunteers were HADIR, the session was libur/cancelled and must not trigger ALPA.
   const unattendedPastActivities = await prisma.activity.findMany({
     where: {
       date: { lt: todayDate },
       status: { not: "CANCELLED" },
-      OR: [
-        { teamMembers: { some: { teamMemberId } } },
-        { schedule: { teamMembers: { some: { teamMemberId } } } },
-      ],
-      NOT: {
-        teamMembers: {
-          some: {
-            teamMemberId,
+      AND: [
+        {
+          teamMembers: {
+            some: { attendance: "HADIR" },
           },
         },
-      },
+        {
+          NOT: {
+            teamMembers: {
+              some: { teamMemberId },
+            },
+          },
+        },
+        {
+          schedule: {
+            teamMembers: { some: { teamMemberId } },
+          },
+        },
+      ],
     },
     select: { id: true },
   });
