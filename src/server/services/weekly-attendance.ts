@@ -13,7 +13,12 @@ export const AUTO_ALPA_NOTE_PREFIX = "Otomatis ALPA: Tidak mengikuti kegiatan me
 
 export function isAutoAlpaNote(note: string | null | undefined): boolean {
   if (!note) return false;
-  return note.startsWith(AUTO_ALPA_NOTE_PREFIX);
+  return (
+    note.startsWith("Otomatis ALPA") ||
+    note.includes("Otomatis ALPA") ||
+    note.toLowerCase().includes("alpa mingguan") ||
+    note.toLowerCase().includes("otomatis alpa")
+  );
 }
 
 export interface IsoWeekRange {
@@ -150,7 +155,17 @@ export async function syncWeeklyAttendance(options?: {
       id: true,
       fullName: true,
       createdAt: true,
-      scheduleAssignments: { select: { scheduleId: true } },
+      scheduleAssignments: {
+        select: {
+          scheduleId: true,
+          schedule: {
+            select: {
+              id: true,
+              locationId: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -192,7 +207,7 @@ export async function syncWeeklyAttendance(options?: {
   // Purge any auto-ALPA on empty/libur activities
   for (const emptyAct of emptyPastActivities) {
     for (const tm of emptyAct.teamMembers) {
-      if (tm.attendance === "ALPA" && isAutoAlpaNote(tm.note)) {
+      if (tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note)) {
         deleteIds.push(tm.id);
       }
     }
@@ -220,7 +235,7 @@ export async function syncWeeklyAttendance(options?: {
     if (weekActiveActivities.length === 0) {
       for (const act of weekActivities) {
         for (const tm of act.teamMembers) {
-          if (tm.attendance === "ALPA" && isAutoAlpaNote(tm.note)) {
+          if (tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note)) {
             deleteIds.push(tm.id);
           }
         }
@@ -246,30 +261,37 @@ export async function syncWeeklyAttendance(options?: {
         (tm) => tm.attendance === "IZIN" || tm.attendance === "SAKIT",
       );
 
-      // Assigned schedules for this member
+      // Collect assigned schedule IDs and location IDs for this member
       const assignedScheduleIds = new Set(
         member.scheduleAssignments.map((sa) => sa.scheduleId),
       );
-
-      // Active activities in this week matching member's assigned schedules
-      const memberActiveActivities = weekActiveActivities.filter(
-        (act) =>
-          (act.scheduleId && assignedScheduleIds.has(act.scheduleId)) ||
-          act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id),
+      const assignedLocationIds = new Set(
+        member.scheduleAssignments
+          .map((sa) => sa.schedule?.locationId)
+          .filter((locId): locId is string => Boolean(locId)),
       );
+
+      // Active activities in this week matching member's assigned schedules or locations
+      const memberActiveActivities = weekActiveActivities.filter((act) => {
+        if (act.scheduleId && assignedScheduleIds.has(act.scheduleId)) return true;
+        if (act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id)) return true;
+        if (assignedLocationIds.size > 0 && assignedLocationIds.has(act.locationId)) return true;
+        return false;
+      });
 
       const hasSpecificSchedules =
         assignedScheduleIds.size > 0 ||
+        assignedLocationIds.size > 0 ||
         weekActivities.some((act) =>
           act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id),
         );
 
       // Schedule-Aware Exemption:
-      // If the member is assigned to specific schedule(s), but none of those schedules
-      // held an active session this week (e.g. Day 2 was libur), the member is exempt!
+      // If the member is assigned to specific schedule(s) or location(s), but none of those
+      // held an active session this week (e.g. Petir or Day 2 was libur), the member is exempt!
       if (hasSpecificSchedules && memberActiveActivities.length === 0) {
         const obsoleteAutoAlpas = memberAttendances.filter(
-          (tm) => tm.attendance === "ALPA" && isAutoAlpaNote(tm.note),
+          (tm) => tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note),
         );
         for (const alpa of obsoleteAutoAlpas) {
           deleteIds.push(alpa.id);

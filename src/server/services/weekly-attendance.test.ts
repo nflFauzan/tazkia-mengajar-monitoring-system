@@ -283,4 +283,84 @@ describe("syncWeeklyAttendance schedule-aware & libur logic", () => {
     expect(result.alpaCreated).toBe(0);
     expect(upsertSpy).not.toHaveBeenCalled();
   });
+
+  it("does not penalize volunteers from Location B (Petir) when only Location A (Margajaya) held an activity", async () => {
+    const { syncWeeklyAttendance } = await import("./weekly-attendance");
+    const { prisma } = await import("@/lib/db/prisma");
+
+    const evalDate = new Date("2026-10-26T08:00:00Z");
+
+    // Margajaya activity created via wizard (scheduleId: null, locationId: loc-margajaya)
+    const actMargajaya = {
+      id: "act-margajaya",
+      locationId: "loc-margajaya",
+      date: new Date(Date.UTC(2026, 9, 24)),
+      status: "COMPLETED",
+      scheduleId: null,
+      schedule: null,
+      teamMembers: [
+        {
+          id: "atm-margajaya",
+          activityId: "act-margajaya",
+          teamMemberId: "member-margajaya",
+          attendance: "HADIR",
+          note: null,
+        },
+        // Petir volunteer had a false ALPA placed here
+        {
+          id: "atm-petir-alpa",
+          activityId: "act-margajaya",
+          teamMemberId: "member-petir",
+          attendance: "ALPA",
+          note: "Otomatis ALPA (tidak ada presensi/izin)",
+        },
+      ],
+    };
+
+    vi.spyOn(prisma.activity, "findMany").mockResolvedValueOnce([actMargajaya] as any);
+    vi.spyOn(prisma.activity, "updateMany").mockResolvedValue({ count: 0 });
+
+    vi.spyOn(prisma.teamMember, "findMany").mockResolvedValueOnce([
+      {
+        id: "member-margajaya",
+        fullName: "Margajaya Volunteer",
+        createdAt: new Date("2026-01-01"),
+        scheduleAssignments: [
+          {
+            scheduleId: "sch-margajaya",
+            schedule: { id: "sch-margajaya", locationId: "loc-margajaya" },
+          },
+        ],
+      },
+      {
+        id: "member-petir",
+        fullName: "Petir Volunteer",
+        createdAt: new Date("2026-01-01"),
+        scheduleAssignments: [
+          {
+            scheduleId: "sch-petir",
+            schedule: { id: "sch-petir", locationId: "loc-petir" },
+          },
+        ],
+      },
+    ] as any);
+
+    const deleteManySpy = vi
+      .spyOn(prisma.activityTeamMember, "deleteMany")
+      .mockResolvedValueOnce({ count: 1 });
+    const upsertSpy = vi
+      .spyOn(prisma.activityTeamMember, "upsert")
+      .mockResolvedValue({} as any);
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (ops: any) => ops);
+
+    const result = await syncWeeklyAttendance({ now: evalDate });
+
+    // Petir volunteer is exempt from Margajaya activity, false ALPA removed!
+    expect(result.alpaRemoved).toBe(1);
+    expect(result.alpaCreated).toBe(0);
+    expect(deleteManySpy).toHaveBeenCalledWith({
+      where: { id: { in: ["atm-petir-alpa"] } },
+    });
+    expect(upsertSpy).not.toHaveBeenCalled();
+  });
 });
