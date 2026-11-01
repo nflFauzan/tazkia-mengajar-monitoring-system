@@ -62,13 +62,26 @@ export async function POST(request: Request) {
     return NextResponse.json(session);
   } catch (error) {
     console.error("[gdrive-session]", error);
+    let message =
+      error instanceof Error
+        ? error.message
+        : "Gagal menyiapkan sesi upload Google Drive.";
+
+    const isInvalidGrant =
+      message.includes("invalid_grant") ||
+      (typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        (error as { response?: { data?: { error?: string } } }).response?.data
+          ?.error === "invalid_grant");
+
+    if (isInvalidGrant) {
+      message =
+        "Token Google Drive telah kedaluwarsa (invalid_grant). Silakan generate token baru via `npm run auth:gdrive` dan pastikan status aplikasi di Google Cloud Console diatur ke 'In production'.";
+    }
+
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Gagal menyiapkan sesi upload Google Drive.",
-      },
+      { error: message },
       { status: 500 },
     );
   }
