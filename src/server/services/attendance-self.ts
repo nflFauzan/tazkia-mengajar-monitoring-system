@@ -73,7 +73,12 @@ export async function getPengajarAttendanceSessions(
   const todayStr = getWibDateString(now);
   const todayDate = new Date(`${todayStr}T00:00:00Z`);
 
-  // 1. Fetch activities where this team member is assigned or recorded
+  // 1. Fetch member's assigned location and activities where this team member is eligible
+  const member = await prisma.teamMember.findUnique({
+    where: { id: teamMemberId },
+    select: { locationId: true },
+  });
+
   const activities = await prisma.activity.findMany({
     where: {
       date: { gte: todayDate },
@@ -90,6 +95,8 @@ export async function getPengajarAttendanceSessions(
             teamMembers: { none: {} },
           },
         },
+        ...(member?.locationId ? [{ locationId: member.locationId }] : []),
+        { scheduleId: null },
       ],
     },
     include: {
@@ -162,6 +169,7 @@ export async function getPengajarAttendanceSessions(
       OR: [
         { teamMembers: { some: { teamMemberId } } },
         { teamMembers: { none: {} } },
+        ...(member?.locationId ? [{ locationId: member.locationId }] : []),
       ],
     },
     include: {
