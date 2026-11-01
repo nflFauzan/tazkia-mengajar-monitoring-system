@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/common/confirm-dialog";
 import {
   ActiveField,
   FormDialog,
+  SelectField,
   TextAreaField,
   TextField,
 } from "@/components/common/form-dialog";
@@ -58,10 +59,16 @@ export interface TeamMemberRow {
   status: string | null;
   phone: string | null;
   notes: string | null;
+  locationId?: string | null;
+  location?: { id: string; name: string } | null;
   isActive: boolean;
 }
 
-export function AddTeamMemberButton() {
+export function AddTeamMemberButton({
+  locations,
+}: {
+  locations?: Array<{ id: string; name: string }>;
+}) {
   const [open, setOpen] = useState(false);
   const [createdData, setCreatedData] = useState<CredentialSuccessData | null>(
     null,
@@ -77,6 +84,7 @@ export function AddTeamMemberButton() {
         <TeamMemberFormDialog
           open={open}
           onOpenChange={setOpen}
+          locations={locations}
           onSuccessCreated={(data) => setCreatedData(data)}
         />
       ) : null}
@@ -91,7 +99,13 @@ export function AddTeamMemberButton() {
   );
 }
 
-export function TeamMemberRowActions({ member }: { member: TeamMemberRow }) {
+export function TeamMemberRowActions({
+  member,
+  locations,
+}: {
+  member: TeamMemberRow;
+  locations?: Array<{ id: string; name: string }>;
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -153,6 +167,7 @@ export function TeamMemberRowActions({ member }: { member: TeamMemberRow }) {
           open={editOpen}
           onOpenChange={setEditOpen}
           member={member}
+          locations={locations}
         />
       ) : null}
 
@@ -195,11 +210,13 @@ function TeamMemberFormDialog({
   open,
   onOpenChange,
   member,
+  locations,
   onSuccessCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   member?: TeamMemberRow;
+  locations?: Array<{ id: string; name: string }>;
   onSuccessCreated?: (data: CredentialSuccessData) => void;
 }) {
   const isEdit = Boolean(member);
@@ -311,6 +328,16 @@ function TeamMemberFormDialog({
         onChange={isEdit ? undefined : (e) => setPhone(e.target.value)}
         placeholder="08xxxxxxxxxx"
         hint="Gunakan nomor WhatsApp aktif untuk pengiriman kredensial akun."
+      />
+      <SelectField
+        name="locationId"
+        label="Tempat Penugasan Utama"
+        defaultValue={member?.locationId ?? ""}
+        placeholder="Pilih Tempat (Opsional / Fleksibel)"
+        options={(locations ?? []).map((loc) => ({
+          value: loc.id,
+          label: loc.name,
+        }))}
       />
       <TextAreaField name="notes" label="Catatan" defaultValue={member?.notes} />
       <ActiveField defaultChecked={member?.isActive ?? true} />

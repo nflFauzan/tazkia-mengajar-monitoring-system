@@ -80,6 +80,7 @@ export const teamMemberSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   notes: optionalText(1000, "Catatan"),
+  locationId: optionalText(64, "Tempat penugasan"),
   isActive: z.boolean().default(true),
 });
 

@@ -37,6 +37,7 @@ function parseForm(formData: FormData) {
     phone: formData.get("phone") ?? undefined,
     photoUrl: formData.get("photoUrl") ?? undefined,
     notes: formData.get("notes") ?? undefined,
+    locationId: formData.get("locationId") ?? undefined,
     isActive: readCheckbox(formData, "isActive"),
   });
 }

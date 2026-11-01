@@ -43,6 +43,9 @@ export default async function RekapPage({
   const params = await searchParams;
   const filters = readActivityFilters(params);
   const where = buildActivityWhere(filters);
+  if (!filters.status) {
+    where.status = { not: "CANCELLED" };
+  }
 
   const [
     activityCount,

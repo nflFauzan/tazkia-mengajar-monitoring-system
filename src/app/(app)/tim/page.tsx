@@ -53,7 +53,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
       }
     : {};
 
-  const [members, total] = await Promise.all([
+  const [members, total, locations] = await Promise.all([
     prisma.teamMember.findMany({
       where,
       orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
@@ -66,11 +66,18 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
         status: true,
         phone: true,
         notes: true,
+        locationId: true,
+        location: { select: { id: true, name: true } },
         isActive: true,
         _count: { select: { activityAttendances: true } },
       },
     }),
     prisma.teamMember.count({ where }),
+    prisma.location.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
 
   const meta = buildPaginationMeta(total, page);
@@ -80,7 +87,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
       <PageHeader
         title="Tim"
         description="Direktori pengajar, pembimbing, dan anggota tim Tazkia Mengajar."
-        actions={isAdmin ? <AddTeamMemberButton /> : null}
+        actions={isAdmin ? <AddTeamMemberButton locations={locations} /> : null}
       />
 
       <div className="mb-4">
@@ -96,7 +103,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
               ? `Tidak ada anggota yang cocok dengan "${search}".`
               : "Daftar anggota tim belum tersedia."
           }
-          action={isAdmin && !search ? <AddTeamMemberButton /> : undefined}
+          action={isAdmin && !search ? <AddTeamMemberButton locations={locations} /> : undefined}
         />
       ) : (
         <div className="border-border rounded-lg border-2 shadow-[var(--shadow-brutal)]">
@@ -106,6 +113,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                 <TableHead>Nama</TableHead>
                 <TableHead className="hidden sm:table-cell">Panggilan</TableHead>
                 <TableHead className="hidden md:table-cell">Status</TableHead>
+                <TableHead className="hidden md:table-cell">Tempat Tugas</TableHead>
                 <TableHead className="hidden lg:table-cell">Kontak</TableHead>
                 <TableHead className="hidden lg:table-cell">Kegiatan</TableHead>
                 <TableHead>Aktif</TableHead>
@@ -123,6 +131,15 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {member.status ?? "—"}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {member.location ? (
+                      <Badge variant="outline" className="font-normal text-xs">
+                        {member.location.name}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     {member.phone ? (
@@ -152,7 +169,7 @@ export default async function TimPage({ searchParams }: PageProps<"/tim">) {
                   </TableCell>
                   {isAdmin ? (
                     <TableCell className="text-right">
-                      <TeamMemberRowActions member={member} />
+                      <TeamMemberRowActions member={member} locations={locations} />
                     </TableCell>
                   ) : null}
                 </TableRow>

@@ -134,6 +134,22 @@ export async function syncWeeklyAttendance(options?: {
     return { weeksEvaluated: 0, alpaCreated: 0, alpaRemoved: 0 };
   }
 
+  const deleteIds: string[] = [];
+
+  // Purge any auto-ALPA on activities that are already CANCELLED (libur / dibatalkan)
+  const cancelledAlpas = await prisma.activityTeamMember.findMany({
+    where: {
+      activity: { status: "CANCELLED" },
+      attendance: "ALPA",
+    },
+    select: { id: true, note: true },
+  });
+  for (const row of cancelledAlpas) {
+    if (isAutoAlpaNote(row.note) || !row.note) {
+      deleteIds.push(row.id);
+    }
+  }
+
   // Identify past activities where 0 volunteers were HADIR (empty / libur sessions).
   // Sesi mengajar tanpa presensi hadir relawan dianggap libur dan tidak boleh memicu ALPA.
   const emptyPastActivities = activities.filter(
@@ -146,6 +162,13 @@ export async function syncWeeklyAttendance(options?: {
       where: { id: { in: emptyIds } },
       data: { status: "CANCELLED" },
     });
+    for (const emptyAct of emptyPastActivities) {
+      for (const tm of emptyAct.teamMembers) {
+        if (tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note)) {
+          deleteIds.push(tm.id);
+        }
+      }
+    }
   }
 
   // 2. Fetch all active team members
@@ -154,6 +177,7 @@ export async function syncWeeklyAttendance(options?: {
     select: {
       id: true,
       fullName: true,
+      locationId: true,
       createdAt: true,
       scheduleAssignments: {
         select: {
@@ -170,7 +194,12 @@ export async function syncWeeklyAttendance(options?: {
   });
 
   if (activeMembers.length === 0) {
-    return { weeksEvaluated: 0, alpaCreated: 0, alpaRemoved: 0 };
+    if (deleteIds.length > 0) {
+      await prisma.activityTeamMember.deleteMany({
+        where: { id: { in: deleteIds } },
+      });
+    }
+    return { weeksEvaluated: 0, alpaCreated: 0, alpaRemoved: deleteIds.length };
   }
 
   // 3. Group past activities by ISO week
@@ -201,17 +230,6 @@ export async function syncWeeklyAttendance(options?: {
     attendance: "ALPA";
     note: string;
   }> = [];
-
-  const deleteIds: string[] = [];
-
-  // Purge any auto-ALPA on empty/libur activities
-  for (const emptyAct of emptyPastActivities) {
-    for (const tm of emptyAct.teamMembers) {
-      if (tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note)) {
-        deleteIds.push(tm.id);
-      }
-    }
-  }
 
   // 4. Evaluate each week
   for (const { range, activities: weekActivities } of weekMap.values()) {
@@ -251,7 +269,7 @@ export async function syncWeeklyAttendance(options?: {
         continue;
       }
 
-      // Collect all attendances for this member in this week
+      // Collect all attendances for this member in this week across ALL activities
       const memberAttendances = weekActivities.flatMap((act) =>
         act.teamMembers.filter((tm) => tm.teamMemberId === member.id),
       );
@@ -260,6 +278,20 @@ export async function syncWeeklyAttendance(options?: {
       const hasExcused = memberAttendances.some(
         (tm) => tm.attendance === "IZIN" || tm.attendance === "SAKIT",
       );
+
+      // Rule 1: Cross-location attendance or excuse satisfies the weekly duty!
+      // "saya adalah petugas relawan di petir, saya boleh ikut kegiatan di margajaya juga.
+      // jadi ketika saya ikut kegiatan di margajaya saya tidak harus mengikuti kegiatan di petir
+      // padahal saya relawan petir."
+      if (hasHadir || hasExcused) {
+        const obsoleteAutoAlpas = memberAttendances.filter(
+          (tm) => tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note),
+        );
+        for (const alpa of obsoleteAutoAlpas) {
+          deleteIds.push(alpa.id);
+        }
+        continue;
+      }
 
       // Collect assigned schedule IDs and location IDs for this member
       const assignedScheduleIds = new Set(
@@ -270,26 +302,34 @@ export async function syncWeeklyAttendance(options?: {
           .map((sa) => sa.schedule?.locationId)
           .filter((locId): locId is string => Boolean(locId)),
       );
+      if (member.locationId) {
+        assignedLocationIds.add(member.locationId);
+      }
 
-      // Active activities in this week matching member's assigned schedules or locations
+      // Active activities in this week matching member's assigned location or schedules
       const memberActiveActivities = weekActiveActivities.filter((act) => {
+        if (member.locationId) {
+          return act.locationId === member.locationId;
+        }
         if (act.scheduleId && assignedScheduleIds.has(act.scheduleId)) return true;
         if (act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id)) return true;
         if (assignedLocationIds.size > 0 && assignedLocationIds.has(act.locationId)) return true;
         return false;
       });
 
-      const hasSpecificSchedules =
+      const hasSpecificAssignment =
+        Boolean(member.locationId) ||
         assignedScheduleIds.size > 0 ||
         assignedLocationIds.size > 0 ||
         weekActivities.some((act) =>
           act.schedule?.teamMembers.some((tm) => tm.teamMemberId === member.id),
         );
 
-      // Schedule-Aware Exemption:
-      // If the member is assigned to specific schedule(s) or location(s), but none of those
-      // held an active session this week (e.g. Petir or Day 2 was libur), the member is exempt!
-      if (hasSpecificSchedules && memberActiveActivities.length === 0) {
+      // Rule 2: If the member has an assigned location or schedule, but no active session
+      // took place there this week (0 volunteers HADIR or session was libur):
+      // "tetapi ketika kegiatan itu tidak berlangsung maka kegiatan tersebut di anggap libur"
+      // The member is on LIBUR and must NEVER receive ALPA!
+      if (hasSpecificAssignment && memberActiveActivities.length === 0) {
         const obsoleteAutoAlpas = memberAttendances.filter(
           (tm) => tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note),
         );
@@ -299,15 +339,15 @@ export async function syncWeeklyAttendance(options?: {
         continue;
       }
 
-      // If the member has NO specific schedule assigned (open volunteer):
-      // Only evaluate if there was an open activity (schedule with 0 assigned members)
-      if (!hasSpecificSchedules) {
+      // Rule 3: If the member has NO specific location or schedule assigned (open volunteer):
+      // Only evaluate if there was an open activity this week.
+      if (!hasSpecificAssignment) {
         const openActiveActivities = weekActiveActivities.filter(
           (act) => !act.schedule || act.schedule.teamMembers.length === 0,
         );
         if (openActiveActivities.length === 0) {
           const obsoleteAutoAlpas = memberAttendances.filter(
-            (tm) => tm.attendance === "ALPA" && isAutoAlpaNote(tm.note),
+            (tm) => tm.attendance === "ALPA" && (isAutoAlpaNote(tm.note) || !tm.note),
           );
           for (const alpa of obsoleteAutoAlpas) {
             deleteIds.push(alpa.id);
@@ -316,46 +356,34 @@ export async function syncWeeklyAttendance(options?: {
         }
       }
 
-      if (hasHadir || hasExcused) {
-        // If the member fulfilled the weekly duty or had an excuse,
-        // remove any auto-generated ALPA that might have been created previously.
-        const obsoleteAutoAlpas = memberAttendances.filter(
-          (tm) => tm.attendance === "ALPA" && isAutoAlpaNote(tm.note),
-        );
-        for (const alpa of obsoleteAutoAlpas) {
-          deleteIds.push(alpa.id);
-        }
-      } else {
-        // Member did not attend and was not excused in this entire week
-        const existingAlpas = memberAttendances.filter(
-          (tm) => tm.attendance === "ALPA",
-        );
+      // Rule 4: Member did not attend anywhere, their assigned location held an active session,
+      // and member has no valid excuse (izin/sakit) -> Record ALPA on THEIR assigned session.
+      // "tapi kalau saya tidak ikut di margajaya saya wajib ikut kegiatan di petir.
+      // ketika saya di petir tidak hadir maka alpa."
+      const existingAlpas = memberAttendances.filter(
+        (tm) => tm.attendance === "ALPA",
+      );
 
-        if (existingAlpas.length === 0) {
-          // Choose the most appropriate active activity to record ALPA on:
-          // Priority 1: Activity matching member's assigned schedule
-          // Priority 2: Open activity
-          // Priority 3: First active activity of the week
-          const targetActivity =
-            memberActiveActivities[0] ??
-            weekActiveActivities.find(
-              (act) => !act.schedule || act.schedule.teamMembers.length === 0,
-            ) ??
-            weekActiveActivities[0];
+      if (existingAlpas.length === 0) {
+        const targetActivity =
+          memberActiveActivities[0] ??
+          weekActiveActivities.find(
+            (act) => !act.schedule || act.schedule.teamMembers.length === 0,
+          ) ??
+          weekActiveActivities[0];
 
-          creates.push({
-            activityId: targetActivity.id,
-            teamMemberId: member.id,
-            attendance: "ALPA",
-            note: noteText,
-          });
-        } else if (existingAlpas.length > 1) {
-          // If there are multiple auto-ALPAs in the same week, keep the first and delete duplicates
-          const autoAlpas = existingAlpas.filter((tm) => isAutoAlpaNote(tm.note));
-          if (autoAlpas.length > 1) {
-            for (let i = 1; i < autoAlpas.length; i++) {
-              deleteIds.push(autoAlpas[i].id);
-            }
+        creates.push({
+          activityId: targetActivity.id,
+          teamMemberId: member.id,
+          attendance: "ALPA",
+          note: noteText,
+        });
+      } else if (existingAlpas.length > 1) {
+        // If there are duplicate auto-ALPAs in the same week, keep the first and delete duplicates
+        const autoAlpas = existingAlpas.filter((tm) => isAutoAlpaNote(tm.note));
+        if (autoAlpas.length > 1) {
+          for (let i = 1; i < autoAlpas.length; i++) {
+            deleteIds.push(autoAlpas[i].id);
           }
         }
       }

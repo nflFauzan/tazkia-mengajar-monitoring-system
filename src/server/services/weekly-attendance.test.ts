@@ -17,6 +17,7 @@ vi.mock("@/lib/db/prisma", () => ({
       findMany: vi.fn(),
     },
     activityTeamMember: {
+      findMany: vi.fn().mockResolvedValue([]),
       deleteMany: vi.fn(),
       upsert: vi.fn(),
     },
@@ -363,4 +364,53 @@ describe("syncWeeklyAttendance schedule-aware & libur logic", () => {
     });
     expect(upsertSpy).not.toHaveBeenCalled();
   });
+
+  it("considers weekly duty fulfilled when Petir volunteer teaches at Margajaya", async () => {
+    const { syncWeeklyAttendance } = await import("./weekly-attendance");
+    const { prisma } = await import("@/lib/db/prisma");
+
+    const evalDate = new Date("2026-10-26T08:00:00Z");
+
+    // Margajaya activity on Saturday where Petir volunteer attended!
+    const actMargajaya = {
+      id: "act-margajaya",
+      date: new Date(Date.UTC(2026, 9, 24)),
+      locationId: "loc-margajaya",
+      status: "COMPLETED",
+      scheduleId: null,
+      schedule: null,
+      teamMembers: [
+        {
+          id: "atm-azmi-hadir",
+          activityId: "act-margajaya",
+          teamMemberId: "azmi-petir",
+          attendance: "HADIR",
+          note: null,
+        },
+      ],
+    };
+
+    vi.spyOn(prisma.activity, "findMany").mockResolvedValueOnce([actMargajaya] as any);
+    vi.spyOn(prisma.activity, "updateMany").mockResolvedValue({ count: 0 });
+
+    vi.spyOn(prisma.teamMember, "findMany").mockResolvedValueOnce([
+      {
+        id: "azmi-petir",
+        fullName: "Azmi Petir",
+        locationId: "loc-petir",
+        createdAt: new Date("2026-01-01"),
+        scheduleAssignments: [],
+      },
+    ] as any);
+
+    const upsertSpy = vi.spyOn(prisma.activityTeamMember, "upsert").mockResolvedValue({} as any);
+    vi.spyOn(prisma, "$transaction").mockImplementation(async (ops: any) => ops);
+
+    const result = await syncWeeklyAttendance({ now: evalDate });
+
+    // 0 ALPA created because Azmi's attendance at Margajaya fulfills weekly duty
+    expect(result.alpaCreated).toBe(0);
+    expect(upsertSpy).not.toHaveBeenCalled();
+  });
 });
+

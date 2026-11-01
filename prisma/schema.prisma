@@ -142,6 +142,7 @@ model Location {
   schedules     Schedule[]
   activities    Activity[]
   contentIdeas  ContentIdea[]
+  teamMembers   TeamMember[]
 
   @@index([isActive])
   @@index([name])
@@ -152,23 +153,26 @@ model Location {
 /// (CLAUDE.md 13). `status` is a free-text label such as "Pengajar" or
 /// "Pembimbing", not a role with authorization meaning.
 model TeamMember {
-  id       String  @id @default(cuid())
-  fullName String
-  nickname String?
-  status   String?
-  phone    String?
-  photoUrl String?
-  notes    String?
-  isActive Boolean @default(true)
+  id         String  @id @default(cuid())
+  fullName   String
+  nickname   String?
+  status     String?
+  phone      String?
+  photoUrl   String?
+  notes      String?
+  locationId String?
+  isActive   Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  location            Location?            @relation(fields: [locationId], references: [id], onDelete: SetNull)
   scheduleAssignments ScheduleTeamMember[]
   activityAttendances ActivityTeamMember[]
   appeals             AttendanceAppeal[]
   user                User?
 
+  @@index([locationId])
   @@index([isActive])
   @@index([fullName])
   @@map("team_members")
