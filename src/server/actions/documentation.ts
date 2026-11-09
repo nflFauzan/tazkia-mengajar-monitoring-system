@@ -29,7 +29,7 @@ export async function deleteDocumentationAction(
     await prisma.documentation.delete({ where: { id } });
 
     try {
-      if (isGoogleDriveConfigured()) {
+      if (await isGoogleDriveConfigured()) {
         await deleteDriveFile(doc.storageKey);
       } else {
         await deleteFile(doc.storageKey);

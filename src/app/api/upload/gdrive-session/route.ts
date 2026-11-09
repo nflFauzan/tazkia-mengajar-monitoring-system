@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tidak diizinkan." }, { status: 401 });
   }
 
-  if (!isGoogleDriveConfigured()) {
+  if (!(await isGoogleDriveConfigured())) {
     return NextResponse.json(
       {
         error:

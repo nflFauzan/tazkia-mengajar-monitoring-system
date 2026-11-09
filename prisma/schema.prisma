@@ -612,3 +612,15 @@ model ContentIdea {
   @@map("content_ideas")
 }
 
+
+// ---------------------------------------------------------------------------
+// System Settings (Key-Value configuration stored in Database)
+// ---------------------------------------------------------------------------
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}

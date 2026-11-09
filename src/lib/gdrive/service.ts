@@ -47,7 +47,7 @@ export async function getOrCreateActivityFolder(
     };
   }
 
-  const drive = getGoogleDriveClient();
+  const drive = await getGoogleDriveClient();
   const parentFolderId = getParentFolderId();
 
   const dateStr = formatDatePrefix(activity.date);
@@ -120,7 +120,7 @@ export async function createResumableUploadSession({
   origin?: string;
 }): Promise<{ uploadUrl: string; folderId: string; folderUrl: string }> {
   const { folderId, folderUrl } = await getOrCreateActivityFolder(activityId);
-  const drive = getGoogleDriveClient();
+  const drive = await getGoogleDriveClient();
 
   // Obtain OAuth access token from JWT client or OAuth2 client
   const auth = drive.context._options.auth as {
@@ -192,7 +192,7 @@ export async function uploadBufferToDrive({
   buffer: Buffer;
 }): Promise<{ fileId: string; webViewLink: string; size: number }> {
   const { folderId } = await getOrCreateActivityFolder(activityId);
-  const drive = getGoogleDriveClient();
+  const drive = await getGoogleDriveClient();
 
   const res = await drive.files.create({
     supportsAllDrives: true,
@@ -227,7 +227,7 @@ export async function uploadBufferToDrive({
  */
 export async function deleteDriveFile(fileId: string): Promise<void> {
   try {
-    const drive = getGoogleDriveClient();
+    const drive = await getGoogleDriveClient();
     try {
       await drive.files.delete({ fileId, supportsAllDrives: true });
     } catch {

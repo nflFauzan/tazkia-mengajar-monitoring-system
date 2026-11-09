@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       let storageKey: string;
       let url: string;
 
-      if (isGoogleDriveConfigured()) {
+      if (await isGoogleDriveConfigured()) {
         const driveResult = await uploadBufferToDrive({
           activityId,
           filename: processed.filename,

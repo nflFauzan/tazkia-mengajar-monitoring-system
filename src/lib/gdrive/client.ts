@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { google } from "googleapis";
+import { google, type drive_v3 } from "googleapis";
 
 interface ServiceAccountCredentials {
   client_email?: string;
@@ -80,11 +80,32 @@ export function getGoogleDriveCredentials(): {
   return null;
 }
 
-export function isOAuth2Configured(): boolean {
+/**
+ * Retrieves the effective refresh token, giving precedence to the database
+ * configuration so administrators can update tokens directly via the UI
+ * without needing server redeploys or environment variable changes.
+ */
+export async function getEffectiveRefreshToken(): Promise<string | null> {
+  try {
+    const { prisma } = await import("@/lib/db/prisma");
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: "GOOGLE_REFRESH_TOKEN" },
+    });
+    if (setting?.value?.trim()) {
+      return setting.value.trim();
+    }
+  } catch {
+    // Database might not be reachable or table not yet migrated during initial boot
+  }
+  return process.env.GOOGLE_REFRESH_TOKEN?.trim() || null;
+}
+
+export async function isOAuth2Configured(): Promise<boolean> {
+  const token = await getEffectiveRefreshToken();
   return Boolean(
     process.env.GOOGLE_CLIENT_ID &&
       process.env.GOOGLE_CLIENT_SECRET &&
-      process.env.GOOGLE_REFRESH_TOKEN,
+      token,
   );
 }
 
@@ -98,9 +119,9 @@ export function getParentFolderId(): string {
   return folderId.trim();
 }
 
-export function isGoogleDriveConfigured(): boolean {
+export async function isGoogleDriveConfigured(): Promise<boolean> {
   return (
-    (isOAuth2Configured() || getGoogleDriveCredentials() !== null) &&
+    ((await isOAuth2Configured()) || getGoogleDriveCredentials() !== null) &&
     Boolean(process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID)
   );
 }
@@ -108,18 +129,22 @@ export function isGoogleDriveConfigured(): boolean {
 /**
  * Returns an authenticated Google Drive client instance.
  * Supports:
- * 1. OAuth 2.0 user credentials (uses user's personal Gmail quota)
+ * 1. OAuth 2.0 user credentials (from Database or Environment Variables)
  * 2. Service Account JWT (uses organization/Shared Drive quota)
  */
-export function getGoogleDriveClient() {
+export async function getGoogleDriveClient(
+  explicitToken?: string,
+): Promise<drive_v3.Drive> {
+  const refreshToken = explicitToken || (await getEffectiveRefreshToken());
+
   // Option A: OAuth 2.0 (Best for personal @gmail.com accounts)
-  if (isOAuth2Configured()) {
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && refreshToken) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
     );
     oauth2Client.setCredentials({
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      refresh_token: refreshToken,
     });
     return google.drive({ version: "v3", auth: oauth2Client });
   }
@@ -139,4 +164,61 @@ export function getGoogleDriveClient() {
   });
 
   return google.drive({ version: "v3", auth });
+}
+
+/**
+ * Tests whether a specific refresh token is valid and can access the parent folder.
+ */
+export async function testGoogleDriveToken(
+  refreshToken: string,
+): Promise<{ ok: boolean; folderName?: string; error?: string }> {
+  try {
+    const drive = await getGoogleDriveClient(refreshToken);
+    const res = await drive.files.get({
+      fileId: getParentFolderId(),
+      fields: "id, name",
+    });
+    return { ok: true, folderName: res.data.name || undefined };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * Diagnostic status for the system settings UI.
+ */
+export async function getGoogleDriveStatus(): Promise<{
+  isConfigured: boolean;
+  source: "database" | "env" | "none";
+  folderId: string | null;
+  updatedAt: Date | null;
+}> {
+  let dbSetting = null;
+  try {
+    const { prisma } = await import("@/lib/db/prisma");
+    dbSetting = await prisma.systemSetting.findUnique({
+      where: { key: "GOOGLE_REFRESH_TOKEN" },
+    });
+  } catch {
+    // Ignore error
+  }
+
+  const source = dbSetting?.value ? "database" : process.env.GOOGLE_REFRESH_TOKEN ? "env" : "none";
+  const hasToken = Boolean(dbSetting?.value || process.env.GOOGLE_REFRESH_TOKEN);
+  const isConfigured = Boolean(
+    process.env.GOOGLE_CLIENT_ID &&
+      process.env.GOOGLE_CLIENT_SECRET &&
+      hasToken &&
+      process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID,
+  );
+
+  return {
+    isConfigured,
+    source,
+    folderId: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || null,
+    updatedAt: dbSetting?.updatedAt || null,
+  };
 }

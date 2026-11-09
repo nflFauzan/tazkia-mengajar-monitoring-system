@@ -19,6 +19,8 @@ import {
 import { requireAdmin } from "@/lib/auth/session";
 import { formatTanggalSingkat } from "@/lib/dates";
 import { prisma } from "@/lib/db/prisma";
+import { getGoogleDriveStatus } from "@/lib/gdrive/client";
+import { GoogleDriveCard } from "@/components/settings/google-drive-card";
 import { hasBlobToken, isUsingLocalStorage } from "@/lib/storage";
 
 export const metadata: Metadata = { title: "Pengaturan" };
@@ -26,7 +28,7 @@ export const metadata: Metadata = { title: "Pengaturan" };
 export default async function PengaturanPage() {
   const currentUser = await requireAdmin();
 
-  const [admins, pengajars, availableTeamMembers] = await Promise.all([
+  const [admins, pengajars, availableTeamMembers, gdriveStatus] = await Promise.all([
     prisma.user.findMany({
       where: { role: "ADMIN" },
       orderBy: [{ isActive: "desc" }, { name: "asc" }],
@@ -68,6 +70,7 @@ export default async function PengaturanPage() {
         phone: true,
       },
     }),
+    getGoogleDriveStatus(),
   ]);
 
   const usingLocalStorage = isUsingLocalStorage();
@@ -240,6 +243,13 @@ export default async function PengaturanPage() {
             </Table>
           </div>
         )}
+      </section>
+
+      <section className="mb-8">
+        <h2 className="font-heading mb-3 text-lg tracking-tight">
+          Integrasi Google Drive
+        </h2>
+        <GoogleDriveCard status={gdriveStatus} />
       </section>
 
       <section>
