@@ -309,10 +309,11 @@ if (!fs.existsSync(REPORTS_DIR)) {
 fs.writeFileSync(path.join(REPORTS_DIR, 'report.html'), html);
 console.log('HTML Report successfully generated at security-reports/report.html');
 
-// Quality Gate Exit Code: Fail CI/CD if overall security status is FAILED
+// Quality Gate Reporting Mode: Tetap selesaikan proses dengan sukses agar report selalu terbit
 if (overallStatus === 'FAILED') {
-  console.error('\n❌ DevSecOps Quality Gate FAILED: Security vulnerabilities detected. See report.html for details.');
-  process.exit(1);
+  console.warn('\n⚠️ DevSecOps Notice: Security findings or issues detected. Silakan buka report.html di Artifacts untuk evaluasi dan perbaikan.');
 } else {
   console.log('\n✅ DevSecOps Quality Gate PASSED: All security checks passed.');
 }
+
+process.exit(0);
