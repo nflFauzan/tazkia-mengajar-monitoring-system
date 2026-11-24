@@ -28,7 +28,8 @@ jobs:
       - name: 3. Secret Scanner (TruffleHog)
         run: |
           curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
-          trufflehog filesystem ./ --json > security-reports/trufflehog.json || true
+          # Fail-fast: Silang merah jika terdeteksi secret bocor
+          trufflehog filesystem ./ --json > security-reports/trufflehog.json
 
       # ========================================================
       # STEP 2: SCA SCANNER (Snyk Open Source Dependencies)
@@ -38,7 +39,8 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           npm install -g snyk
-          snyk test --all-projects --json > security-reports/snyk-sca.json || true
+          # Fail-fast: Silang merah jika ada vulnerability pada dependencies
+          snyk test --all-projects --json > security-reports/snyk-sca.json
 
       # ========================================================
       # STEP 3: SBOM GENERATOR (Anchore Syft)
@@ -46,7 +48,7 @@ jobs:
       - name: 5. Software Bill of Materials Generator (Anchore Syft)
         run: |
           curl -sSfL https://get.anchore.io/syft | sh -s -- -b /usr/local/bin
-          syft dir:. -o cyclonedx-json > security-reports/sbom.json || true
+          syft dir:. -o cyclonedx-json > security-reports/sbom.json
 
       # ========================================================
       # STEP 4: SAST SCANNER (Snyk Code Static Analysis)
@@ -55,7 +57,8 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk code test --sarif > security-reports/snyk-code.json || true
+          # Fail-fast: Silang merah jika ada celah di source code
+          snyk code test --sarif > security-reports/snyk-code.json
 
       # ========================================================
       # STEP 5: GENERATE COMBINED HTML DASHBOARD REPORT
