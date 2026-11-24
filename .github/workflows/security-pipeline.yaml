@@ -1,0 +1,77 @@
+name: SSDLC DevSecOps Security Pipeline (GitHub)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - development
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  security-gate:
+    name: DevSecOps Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: 2. Initialize Security Reports Directory
+        if: always()
+        run: mkdir -p security-reports
+
+      # ========================================================
+      # STEP 1: SECRET SCANNER (TruffleHog)
+      # ========================================================
+      - name: 3. Secret Scanner (TruffleHog)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+          trufflehog filesystem ./ --json > security-reports/trufflehog.json || true
+
+      # ========================================================
+      # STEP 2: SCA SCANNER (Snyk Open Source Dependencies)
+      # ========================================================
+      - name: 4. SCA Scanner (Snyk Open Source)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          npm install -g snyk
+          snyk test --all-projects --json > security-reports/snyk-sca.json || true
+
+      # ========================================================
+      # STEP 3: SBOM GENERATOR (Anchore Syft)
+      # ========================================================
+      - name: 5. Software Bill of Materials Generator (Anchore Syft)
+        run: |
+          curl -sSfL https://get.anchore.io/syft | sh -s -- -b /usr/local/bin
+          syft dir:. -o cyclonedx-json > security-reports/sbom.json || true
+
+      # ========================================================
+      # STEP 4: SAST SCANNER (Snyk Code Static Analysis)
+      # ========================================================
+      - name: 6. SAST Scanner (Snyk Code)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk code test --sarif > security-reports/snyk-code.json || true
+
+      # ========================================================
+      # STEP 5: GENERATE COMBINED HTML DASHBOARD REPORT
+      # ========================================================
+      - name: 7. Generate Combined DevSecOps Dashboard
+        if: always()
+        run: |
+          node .github/scripts/generate-native-report.cjs
+
+      # ========================================================
+      # STEP 6: UPLOAD COMPREHENSIVE ARTIFACTS
+      # ========================================================
+      - name: 8. Upload DevSecOps Reports as Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devsecops-security-report
+          path: security-reports/
+          retention-days: 30
