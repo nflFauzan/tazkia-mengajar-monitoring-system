@@ -196,7 +196,7 @@ const formattedWib = new Intl.DateTimeFormat('id-ID', {
 const timestampDisplay = `${formattedWib} (${now.toISOString()})`;
 
 // ============================================================================
-// GENERATE INTERACTIVE INFOGRAPHIC DASHBOARD (NO EMOJIS)
+// GENERATE CLEAN CORPORATE DASHBOARD (MATTE PALETTE - ZERO EMOJI - NO NEON)
 // ============================================================================
 const ecosystemsHtml = Object.entries(syftSbom.ecosystems || {})
   .map(([eco, count]) => `<span class="tag-pill">${eco}: ${count}</span>`)
@@ -212,7 +212,7 @@ const html = `<!DOCTYPE html>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: radial-gradient(circle at 20% 30%, #0a1733 0%, #030816 100%);
+      background: #0f172a;
       color: #f1f5f9;
       min-height: 100vh;
       padding: 40px 20px;
@@ -225,13 +225,13 @@ const html = `<!DOCTYPE html>
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 24px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 20px;
+      border-bottom: 1px solid #334155;
       margin-bottom: 40px;
     }
     .top-bar .title-group h1 {
-      font-size: 22px;
-      letter-spacing: 1.5px;
+      font-size: 20px;
+      letter-spacing: 1px;
       text-transform: uppercase;
       font-weight: 700;
       color: #ffffff;
@@ -243,18 +243,18 @@ const html = `<!DOCTYPE html>
     }
     .timestamp {
       font-size: 12px;
-      color: #64748b;
+      color: #94a3b8;
       font-family: monospace;
       text-align: right;
     }
 
-    /* ================= INFOGRAPHIC ARCHITECTURE ================= */
+    /* ================= INFOGRAPHIC ARCHITECTURE (MATTE DESIGN) ================= */
     .infographic-container {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 50px;
-      margin-bottom: 50px;
+      margin-bottom: 45px;
       position: relative;
     }
     @media (max-width: 900px) {
@@ -263,10 +263,10 @@ const html = `<!DOCTYPE html>
       }
     }
 
-    /* Central Hub Circle */
+    /* Central Hub Circle (Matte Corporate) */
     .hub-card {
-      width: 270px;
-      height: 270px;
+      width: 260px;
+      height: 260px;
       border-radius: 50%;
       background: #ffffff;
       color: #0f172a;
@@ -275,51 +275,47 @@ const html = `<!DOCTYPE html>
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 30px;
-      box-shadow: 0 0 50px rgba(0, 210, 255, 0.25), 0 10px 30px rgba(0, 0, 0, 0.5);
+      padding: 28px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
       position: relative;
       flex-shrink: 0;
-      transition: all 0.3s ease;
     }
     .hub-card.PASSED {
-      border: 8px solid #10b981;
-      box-shadow: 0 0 50px rgba(16, 185, 129, 0.35);
+      border: 5px solid #16a34a;
     }
     .hub-card.FAILED {
-      border: 8px solid #ef4444;
-      box-shadow: 0 0 50px rgba(239, 68, 68, 0.35);
+      border: 5px solid #dc2626;
     }
     .hub-badge {
-      padding: 6px 14px;
-      border-radius: 20px;
+      padding: 5px 14px;
+      border-radius: 16px;
       font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 1.2px;
+      font-weight: 700;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .hub-badge.PASSED {
-      background: #10b981;
+      background: #16a34a;
       color: #ffffff;
     }
     .hub-badge.FAILED {
-      background: #ef4444;
+      background: #dc2626;
       color: #ffffff;
     }
     .hub-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 800;
       line-height: 1.2;
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
       color: #0f172a;
     }
     .hub-divider {
-      width: 40px;
-      height: 3px;
-      background: #0284c7;
+      width: 36px;
+      height: 2px;
+      background: #cbd5e1;
       margin: 10px 0;
-      border-radius: 2px;
     }
     .hub-subtitle {
       font-size: 11px;
@@ -327,61 +323,56 @@ const html = `<!DOCTYPE html>
       line-height: 1.4;
     }
 
-    /* Branch Stage Capsule Items */
+    /* Branch Stage Capsule Items (Matte Dark Blue) */
     .stages-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
       width: 100%;
       max-width: 580px;
     }
     .stage-card {
-      background: linear-gradient(90deg, #132448 0%, #0e1c38 100%);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: 50px;
-      padding: 14px 24px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 40px;
+      padding: 12px 22px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
-      transition: all 0.25s ease;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      position: relative;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .stage-card:hover {
-      transform: translateX(8px);
-      border-color: #38bdf8;
-      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.25);
+      background: #24344d;
+      border-color: #475569;
     }
     .stage-card.active {
-      background: linear-gradient(90deg, #1e3a70 0%, #172a50 100%);
-      border-color: #38bdf8;
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+      background: #273854;
+      border-color: #0284c7;
     }
     .stage-left {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 16px;
     }
     .stage-number {
-      width: 42px;
-      height: 42px;
+      width: 38px;
+      height: 38px;
       background: #ffffff;
-      color: #0b1528;
-      font-weight: 800;
-      font-size: 16px;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 15px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     }
     .stage-info .stage-name {
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 600;
       color: #ffffff;
-      letter-spacing: 0.5px;
     }
     .stage-info .stage-desc {
       font-size: 12px;
@@ -391,51 +382,51 @@ const html = `<!DOCTYPE html>
     .stage-right {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .stage-badge {
-      padding: 5px 12px;
-      border-radius: 20px;
+      padding: 4px 10px;
+      border-radius: 12px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.5px;
     }
-    .stage-badge.PASSED { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-    .stage-badge.FAILED { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-    .stage-badge.SKIPPED { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid #64748b; }
+    .stage-badge.PASSED { background: #14532d; color: #86efac; border: 1px solid #16a34a; }
+    .stage-badge.FAILED { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
+    .stage-badge.SKIPPED { background: #334155; color: #cbd5e1; border: 1px solid #475569; }
 
     .click-indicator {
       font-size: 11px;
-      color: #38bdf8;
-      font-weight: 600;
-      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #94a3b8;
+      font-weight: 500;
+      border: 1px solid #475569;
       padding: 3px 8px;
-      border-radius: 6px;
+      border-radius: 4px;
+      background: #0f172a;
     }
 
     /* ================= DETAIL PANELS ================= */
     .details-box {
-      background: #0d1933;
-      border: 1px solid #1e3a70;
-      border-radius: 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
       padding: 24px;
-      margin-top: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      margin-top: 10px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     .details-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 14px;
+      border-bottom: 1px solid #334155;
       margin-bottom: 20px;
     }
     .details-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #38bdf8;
-      letter-spacing: 0.5px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
     }
     .table-container {
       overflow-x: auto;
@@ -446,81 +437,80 @@ const html = `<!DOCTYPE html>
       font-size: 13px;
     }
     th, td {
-      padding: 12px 14px;
+      padding: 10px 12px;
       text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid #334155;
     }
     th {
-      background: #091328;
+      background: #0f172a;
       color: #94a3b8;
       font-weight: 600;
       text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.5px;
     }
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+    tr:nth-child(even) td {
+      background: #192437;
     }
     .severity-pill {
       display: inline-block;
-      padding: 3px 8px;
-      border-radius: 4px;
+      padding: 2px 7px;
+      border-radius: 3px;
       font-size: 11px;
       font-weight: 700;
       font-family: monospace;
     }
-    .severity-pill.CRITICAL, .severity-pill.ERROR, .severity-pill.HIGH { background: #991b1b; color: #fecaca; }
-    .severity-pill.MEDIUM, .severity-pill.WARNING { background: #92400e; color: #fef3c7; }
-    .severity-pill.LOW { background: #1e40af; color: #dbeafe; }
+    .severity-pill.CRITICAL, .severity-pill.ERROR, .severity-pill.HIGH { background: #7f1d1d; color: #fca5a5; }
+    .severity-pill.MEDIUM, .severity-pill.WARNING { background: #78350f; color: #fde68a; }
+    .severity-pill.LOW { background: #1e3a8a; color: #bfdbfe; }
     .tag-pill {
-      background: #1e3a70;
+      background: #334155;
       color: #e2e8f0;
-      padding: 3px 10px;
-      border-radius: 12px;
+      padding: 3px 8px;
+      border-radius: 4px;
       font-size: 11px;
       display: inline-block;
       margin: 2px 4px 2px 0;
     }
     .empty-state {
-      padding: 30px;
+      padding: 24px;
       text-align: center;
-      color: #34d399;
-      font-weight: 500;
-      font-size: 14px;
-      background: rgba(16, 185, 129, 0.05);
-      border-radius: 8px;
-      border: 1px dashed rgba(16, 185, 129, 0.3);
+      color: #4ade80;
+      font-size: 13px;
+      background: rgba(22, 163, 74, 0.08);
+      border-radius: 6px;
+      border: 1px solid #16a34a;
     }
     .skipped-state {
-      padding: 30px;
+      padding: 24px;
       text-align: center;
       color: #94a3b8;
-      font-size: 14px;
-      background: rgba(100, 116, 139, 0.05);
-      border-radius: 8px;
-      border: 1px dashed rgba(100, 116, 139, 0.3);
+      font-size: 13px;
+      background: rgba(51, 65, 85, 0.4);
+      border-radius: 6px;
+      border: 1px solid #475569;
     }
     .code-font {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       color: #cbd5e1;
     }
     .footer-bar {
-      margin-top: 50px;
+      margin-top: 45px;
       text-align: center;
       font-size: 12px;
-      color: #475569;
+      color: #64748b;
       padding-top: 20px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      border-top: 1px solid #334155;
     }
   </style>
 </head>
 <body>
   <div class="wrapper">
-    <!-- Header -->
+    <!-- Header Universal (Tanpa Nama Brand Khusus) -->
     <div class="top-bar">
       <div class="title-group">
         <h1>SSDLC DevSecOps Security Gate</h1>
-        <p>Cynnexis Automated Security Audit Pipeline</p>
+        <p>Automated Security Audit & Compliance Pipeline</p>
       </div>
       <div class="timestamp">
         <div>WAKTU AUDIT</div>
@@ -528,7 +518,7 @@ const html = `<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- Interactive Infographic Hub -->
+    <!-- Interactive Infographic Hub (Matte Look) -->
     <div class="infographic-container">
       <!-- Central Node -->
       <div class="hub-card ${overallStatus}">
@@ -733,29 +723,25 @@ const html = `<!DOCTYPE html>
     </div>
 
     <div class="footer-bar">
-      Dokumen laporan resmi Secure SDLC - Dihasilkan secara otomatis oleh CI/CD Pipeline
+      Dokumen Laporan Resmi Secure SDLC - Dihasilkan Secara Otomatis oleh CI/CD Pipeline
     </div>
   </div>
 
   <script>
     function showTab(tabName, cardElement) {
-      // Sembunyikan semua box detail
       document.getElementById('secret-details').style.display = 'none';
       document.getElementById('sca-details').style.display = 'none';
       document.getElementById('sbom-details').style.display = 'none';
       document.getElementById('sast-details').style.display = 'none';
 
-      // Hapus class active dari semua kartu
       const cards = document.querySelectorAll('.stage-card');
       cards.forEach(c => c.classList.remove('active'));
 
-      // Tampilkan box detail yang dipilih
       const targetBox = document.getElementById(tabName + '-details');
       if (targetBox) {
         targetBox.style.display = 'block';
       }
 
-      // Beri tanda active pada kartu yang diklik
       if (cardElement) {
         cardElement.classList.add('active');
       }
