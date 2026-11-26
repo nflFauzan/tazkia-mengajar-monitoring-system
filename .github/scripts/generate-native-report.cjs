@@ -760,4 +760,11 @@ if (!fs.existsSync(REPORTS_DIR)) {
 fs.writeFileSync(path.join(REPORTS_DIR, 'report.html'), html);
 console.log('HTML Report successfully generated at security-reports/report.html');
 
-process.exit(0);
+// Single Source of Truth Quality Gate: Sinkronisasi 100% antara CI/CD Pipeline dan Report
+if (overallStatus === 'FAILED') {
+  console.error('DevSecOps Security Gate: FAILED (Ditemukan temuan keamanan kode produksi yang memerlukan evaluasi).');
+  process.exit(1);
+} else {
+  console.log('DevSecOps Security Gate: PASSED (Seluruh tahapan audit aman).');
+  process.exit(0);
+}

@@ -57,8 +57,8 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          # Fail-fast: Silang merah jika ada celah di source code
-          snyk code test --sarif > security-reports/snyk-code.json
+          # Eksekusi SARIF (evaluasi gate dilakukan oleh generator laporan dengan smart filter)
+          snyk code test --sarif > security-reports/snyk-code.json || true
 
       # ========================================================
       # STEP 5: GENERATE COMBINED HTML DASHBOARD REPORT
