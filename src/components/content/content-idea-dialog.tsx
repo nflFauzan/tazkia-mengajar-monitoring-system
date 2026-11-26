@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Sparkles, Video } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +34,13 @@ interface ContentIdeaDialogProps {
   onOpenChange: (open: boolean) => void;
   idea?: ContentIdeaItem | null;
   locations: Option[];
+  initialValues?: {
+    title?: string;
+    platform?: "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | "LAINNYA";
+    contentType?: string;
+    description?: string;
+    targetDate?: string;
+  };
 }
 
 export function ContentIdeaDialog({
@@ -41,31 +48,58 @@ export function ContentIdeaDialog({
   onOpenChange,
   idea,
   locations,
+  initialValues,
 }: ContentIdeaDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [form, setForm] = useState({
-    title: idea?.title ?? "",
-    platform: idea?.platform ?? "INSTAGRAM",
-    contentType: idea?.contentType ?? "Reels / Video Pendek",
+    title: idea?.title ?? initialValues?.title ?? "",
+    platform: idea?.platform ?? initialValues?.platform ?? "INSTAGRAM",
+    contentType:
+      idea?.contentType ??
+      initialValues?.contentType ??
+      "Feeds / Poster / Carousel",
     referenceUrl: idea?.referenceUrl ?? "",
-    description: idea?.description ?? "",
+    description: idea?.description ?? initialValues?.description ?? "",
     locationId: idea?.locationId ?? "",
-    targetDate: idea?.targetDateStr ?? "",
+    targetDate: idea?.targetDateStr ?? initialValues?.targetDate ?? "",
   });
 
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      setForm({
+        title: idea?.title ?? initialValues?.title ?? "",
+        platform: idea?.platform ?? initialValues?.platform ?? "INSTAGRAM",
+        contentType:
+          idea?.contentType ??
+          initialValues?.contentType ??
+          "Feeds / Poster / Carousel",
+        referenceUrl: idea?.referenceUrl ?? "",
+        description: idea?.description ?? initialValues?.description ?? "",
+        locationId: idea?.locationId ?? "",
+        targetDate: idea?.targetDateStr ?? initialValues?.targetDate ?? "",
+      });
+      setError(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [open, idea, initialValues]);
+
   function resetForm() {
     setForm({
-      title: idea?.title ?? "",
-      platform: idea?.platform ?? "INSTAGRAM",
-      contentType: idea?.contentType ?? "Reels / Video Pendek",
+      title: idea?.title ?? initialValues?.title ?? "",
+      platform: idea?.platform ?? initialValues?.platform ?? "INSTAGRAM",
+      contentType:
+        idea?.contentType ??
+        initialValues?.contentType ??
+        "Feeds / Poster / Carousel",
       referenceUrl: idea?.referenceUrl ?? "",
-      description: idea?.description ?? "",
+      description: idea?.description ?? initialValues?.description ?? "",
       locationId: idea?.locationId ?? "",
-      targetDate: idea?.targetDateStr ?? "",
+      targetDate: idea?.targetDateStr ?? initialValues?.targetDate ?? "",
     });
     setError(null);
   }

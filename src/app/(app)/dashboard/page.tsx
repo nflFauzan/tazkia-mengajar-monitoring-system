@@ -40,6 +40,12 @@ import { getContentIdeas } from "@/server/services/content-ideas";
 import type { ContentIdeaItem } from "@/server/services/content-ideas";
 import { PushNotificationBanner } from "@/components/notifications/push-notification-banner";
 import { AdminScheduleReminderButton } from "@/components/notifications/admin-reminder-button";
+import {
+  getUpcomingIndonesianEvents,
+  type IndonesianCalendarEvent,
+} from "@/lib/indonesian-calendar";
+import { Palette, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -69,6 +75,8 @@ export default async function DashboardPage() {
     getPendingAppeals(),
     getContentIdeas(),
   ]);
+
+  const upcomingCommemorativeDays = getUpcomingIndonesianEvents(new Date(), 14);
 
   return (
     <>
@@ -290,6 +298,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
+      <UpcomingCommemorativeDaysWidget events={upcomingCommemorativeDays} />
       <ContentDashboardWidget ideas={contentIdeas} />
     </>
   );
@@ -319,6 +328,7 @@ function PengajarDashboard({
   } | null;
   contentIdeas: ContentIdeaItem[];
 }) {
+  const upcomingCommemorativeDays = getUpcomingIndonesianEvents(new Date(), 14);
   const todayCount = attendanceData?.todaySessions.length ?? 0;
   const upcomingCount = attendanceData?.upcomingSessions.length ?? 0;
   const historyCount = attendanceData?.recentHistory.length ?? 0;
@@ -525,8 +535,100 @@ function PengajarDashboard({
         </section>
       </div>
 
+      <UpcomingCommemorativeDaysWidget events={upcomingCommemorativeDays} />
       <ContentDashboardWidget ideas={contentIdeas} />
     </>
+  );
+}
+
+function UpcomingCommemorativeDaysWidget({
+  events,
+}: {
+  events: Array<IndonesianCalendarEvent & { daysRemaining: number }>;
+}) {
+  if (events.length === 0) return null;
+
+  return (
+    <section className="mt-6" aria-label="Pengingat Hari Peringatan & Poster IG">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="font-heading text-lg tracking-tight flex items-center gap-2">
+            <Sparkles className="size-5 text-purple-600 dark:text-purple-400" />
+            Pengingat Poster IG & Hari Besar Terdekat
+          </h2>
+          <p className="text-muted-foreground text-xs">
+            Hari besar dan peringatan nasional dalam 14 hari ke depan untuk persiapan publikasi poster/konten Instagram.
+          </p>
+        </div>
+        <ButtonLink href="/jadwal/kalender" variant="ghost" size="sm">
+          Lihat kalender
+        </ButtonLink>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {events.map((e) => {
+          const isUrgent = e.daysRemaining <= 3;
+          return (
+            <div
+              key={`${e.dateKey}-${e.name}`}
+              className={cn(
+                "rounded-lg border-2 bg-card p-3.5 shadow-[var(--shadow-brutal-sm)] flex flex-col justify-between gap-3",
+                isUrgent
+                  ? "border-purple-600/80 dark:border-purple-500 bg-purple-500/5"
+                  : "border-border",
+              )}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] font-bold",
+                      isUrgent
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {e.daysRemaining === 0
+                      ? "Hari Ini!"
+                      : `${e.daysRemaining} hari lagi`}
+                  </Badge>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {e.dateKey}
+                  </span>
+                </div>
+
+                <p className="font-heading text-sm font-bold mt-2 leading-snug">
+                  {e.name}
+                </p>
+
+                {e.suggestedContent ? (
+                  <p className="text-muted-foreground text-xs mt-1.5 line-clamp-2">
+                    💡 {e.suggestedContent}
+                  </p>
+                ) : null}
+              </div>
+
+              <Link
+                href={`/konten?tambah=1&title=${encodeURIComponent(
+                  "Poster Instagram: " + e.name,
+                )}&targetDate=${e.dateKey}&desc=${encodeURIComponent(
+                  "Rencana poster & ucapan media sosial untuk memperingati " +
+                    e.name +
+                    (e.suggestedContent ? ". Ide: " + e.suggestedContent : ""),
+                )}&contentType=${encodeURIComponent(
+                  "Feeds / Poster / Carousel",
+                )}`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-md border-2 border-border bg-purple-600 text-white px-3 py-1.5 text-xs font-bold hover:bg-purple-700 transition-colors shadow-[var(--shadow-brutal-sm)]"
+              >
+                <Palette className="size-3.5" />
+                Rencanakan Poster IG
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

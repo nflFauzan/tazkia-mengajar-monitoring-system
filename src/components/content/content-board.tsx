@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
   Clapperboard,
@@ -45,6 +45,7 @@ export function ContentBoard({
   currentUserRole,
 }: ContentBoardProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
   const [search, setSearch] = useState("");
@@ -54,6 +55,30 @@ export function ContentBoard({
 
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [initialPrefill, setInitialPrefill] = useState<{
+    title?: string;
+    description?: string;
+    targetDate?: string;
+    contentType?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const tambah = searchParams.get("tambah");
+      if (tambah === "1") {
+        setInitialPrefill({
+          title: searchParams.get("title") || undefined,
+          description: searchParams.get("desc") || undefined,
+          targetDate: searchParams.get("targetDate") || undefined,
+          contentType:
+            searchParams.get("contentType") || "Feeds / Poster / Carousel",
+        });
+        setIsCreateOpen(true);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [searchParams]);
+
   const [editingIdea, setEditingIdea] = useState<ContentIdeaItem | null>(null);
   const [publishingIdea, setPublishingIdea] = useState<ContentIdeaItem | null>(null);
   const [deletingIdeaId, setDeletingIdeaId] = useState<string | null>(null);
@@ -260,8 +285,12 @@ export function ContentBoard({
       {/* Create Dialog */}
       <ContentIdeaDialog
         open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
+        onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) setInitialPrefill(null);
+        }}
         locations={locationOptions}
+        initialValues={initialPrefill ?? undefined}
       />
 
       {/* Edit Dialog */}

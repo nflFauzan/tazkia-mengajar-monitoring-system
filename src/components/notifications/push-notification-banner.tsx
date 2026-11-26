@@ -15,14 +15,18 @@ import {
 
 function isValidVapidKey(key?: string | null): boolean {
   if (!key) return false;
-  const clean = key.replace(/['"]+/g, "").trim();
-  return clean.length >= 80 && /^[A-Za-z0-9_-]+$/.test(clean);
+  const clean = key.replace(/['"\s\r\n]+/g, "").trim();
+  return (
+    clean.length >= 80 &&
+    clean.length % 4 !== 1 &&
+    /^[A-Za-z0-9_-]+$/.test(clean)
+  );
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const clean = base64String ? base64String.replace(/['"]+/g, "").trim() : "";
-  if (!clean) {
-    throw new Error("Missing VAPID public key");
+  const clean = base64String ? base64String.replace(/['"\s\r\n]+/g, "").trim() : "";
+  if (!clean || clean.length % 4 === 1) {
+    throw new Error("Missing or malformed VAPID public key");
   }
 
   const unpadded = clean.replace(/=+$/, "");
@@ -167,7 +171,16 @@ export function PushNotificationBanner() {
         toast.success("Notifikasi jadwal di perangkat ini berhasil diaktifkan!");
       } catch (err) {
         console.error("[Push] Error during subscription:", err);
-        toast.error("Gagal mendaftarkan notifikasi pada perangkat ini.");
+        const isEncodingError =
+          err instanceof Error &&
+          (err.name === "InvalidCharacterError" ||
+            err.message.includes("VAPID") ||
+            err.message.includes("encoded"));
+        toast.error(
+          isEncodingError
+            ? "Kunci VAPID belum valid. Pastikan variabel NEXT_PUBLIC_VAPID_PUBLIC_KEY diset dengan tipe Config di Vercel dan sudah di-redeploy."
+            : "Gagal mendaftarkan notifikasi pada perangkat ini.",
+        );
       }
     });
   };

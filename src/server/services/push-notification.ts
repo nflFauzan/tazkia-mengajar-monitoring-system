@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/db/prisma";
 import { getWibDateString } from "@/server/services/attendance-self";
+import { getUpcomingIndonesianEvents } from "@/lib/indonesian-calendar";
 
 export interface PushPayload {
   title: string;
@@ -15,8 +16,12 @@ let isVapidConfigured = false;
 
 function isValidVapidKey(key?: string | null, minLen = 10): boolean {
   if (!key) return false;
-  const clean = key.replace(/['"]+/g, "").trim();
-  return clean.length >= minLen && /^[A-Za-z0-9_-]+$/.test(clean);
+  const clean = key.replace(/['"\s\r\n]+/g, "").trim();
+  return (
+    clean.length >= minLen &&
+    clean.length % 4 !== 1 &&
+    /^[A-Za-z0-9_-]+$/.test(clean)
+  );
 }
 
 function ensureVapidConfigured(): boolean {
@@ -31,9 +36,9 @@ function ensureVapidConfigured(): boolean {
     return false;
   }
 
-  const publicKey = rawPublicKey!.replace(/['"]+/g, "").trim();
-  const privateKey = rawPrivateKey!.replace(/['"]+/g, "").trim();
-  const subject = rawSubject.replace(/['"]+/g, "").trim();
+  const publicKey = rawPublicKey!.replace(/['"\s\r\n]+/g, "").trim();
+  const privateKey = rawPrivateKey!.replace(/['"\s\r\n]+/g, "").trim();
+  const subject = rawSubject.replace(/['"\s\r\n]+/g, "").trim();
 
   try {
     webpush.setVapidDetails(subject, publicKey, privateKey);
@@ -315,3 +320,135 @@ export async function sendScheduleRemindersToday(): Promise<ScheduleReminderResu
     details,
   };
 }
+
+export interface CommemorativeReminderResult {
+  totalEventsTriggered: number;
+  totalDevicesNotified: number;
+  events: Array<{
+    name: string;
+    dateKey: string;
+    type: "H-3_PREPARATION" | "H-0_TODAY";
+    devicesNotified: number;
+  }>;
+}
+
+/**
+ * Dispatches automated reminders for Indonesian commemorative days / holidays:
+ * - H-3: Preparation reminder to design Instagram poster / carousel
+ * - H-0: Today's reminder to publish content / poster on Instagram
+ */
+export async function sendCommemorativeDayReminders(): Promise<CommemorativeReminderResult> {
+  const now = new Date();
+  const upcomingEvents = getUpcomingIndonesianEvents(now, 3);
+
+  // We notify on H-3 (daysRemaining === 3) and H-0 (daysRemaining === 0)
+  const targetEvents = upcomingEvents.filter(
+    (e) => e.daysRemaining === 3 || e.daysRemaining === 0,
+  );
+
+  if (targetEvents.length === 0) {
+    return {
+      totalEventsTriggered: 0,
+      totalDevicesNotified: 0,
+      events: [],
+    };
+  }
+
+  // Fetch all active subscriptions across the system to notify team
+  const subscriptions = await prisma.pushSubscription.findMany({
+    select: {
+      id: true,
+      endpoint: true,
+      p256dh: true,
+      auth: true,
+    },
+  });
+
+  if (subscriptions.length === 0) {
+    return {
+      totalEventsTriggered: targetEvents.length,
+      totalDevicesNotified: 0,
+      events: targetEvents.map((e) => ({
+        name: e.name,
+        dateKey: e.dateKey,
+        type: e.daysRemaining === 3 ? "H-3_PREPARATION" : "H-0_TODAY",
+        devicesNotified: 0,
+      })),
+    };
+  }
+
+  let totalDevicesNotified = 0;
+  const eventsResult: CommemorativeReminderResult["events"] = [];
+
+  for (const event of targetEvents) {
+    const isH3 = event.daysRemaining === 3;
+    const type: "H-3_PREPARATION" | "H-0_TODAY" = isH3
+      ? "H-3_PREPARATION"
+      : "H-0_TODAY";
+
+    const title = isH3
+      ? `🎨 Pengingat Konten IG: 3 Hari Lagi ${event.name}!`
+      : `📢 Hari Ini: ${event.name}!`;
+
+    const body = isH3
+      ? `Tanggal ${event.dateKey} adalah ${event.name}. ${
+          event.suggestedContent
+            ? `Ide poster: "${event.suggestedContent}"`
+            : "Yuk siapkan desain poster Instagram dari sekarang!"
+        }`
+      : `Hari ini kita memperingati ${event.name}. Jangan lupa unggah poster & ucapan Instagram Tazkia Mengajar!`;
+
+    const payload: PushPayload = {
+      title,
+      body,
+      icon: "/brand/logo-tazkia-mengajar.png",
+      badge: "/brand/logo-tazkia-mengajar.png",
+      url: "/konten",
+      tag: `commemorative-${event.dateKey}-${type}`,
+    };
+
+    let devicesNotified = 0;
+    const results = await Promise.allSettled(
+      subscriptions.map((sub) => sendPushNotification(sub, payload)),
+    );
+
+    for (const res of results) {
+      if (res.status === "fulfilled" && res.value.success) {
+        devicesNotified++;
+        totalDevicesNotified++;
+      }
+    }
+
+    eventsResult.push({
+      name: event.name,
+      dateKey: event.dateKey,
+      type,
+      devicesNotified,
+    });
+  }
+
+  return {
+    totalEventsTriggered: targetEvents.length,
+    totalDevicesNotified,
+    events: eventsResult,
+  };
+}
+
+export interface DailyAutomatedReminderResult {
+  schedule: ScheduleReminderResult;
+  commemorative: CommemorativeReminderResult;
+}
+
+/**
+ * Complete autonomous daily dispatch triggered by cron (e.g. 07:00 AM WIB every day).
+ * Sends both teaching session reminders and Instagram commemorative day reminders.
+ */
+export async function sendDailyAutomatedReminders(): Promise<DailyAutomatedReminderResult> {
+  const [schedule, commemorative] = await Promise.all([
+    sendScheduleRemindersToday(),
+    sendCommemorativeDayReminders(),
+  ]);
+
+  return { schedule, commemorative };
+}
+

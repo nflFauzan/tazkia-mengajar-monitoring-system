@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Palette, Sparkles } from "lucide-react";
 
 import { ButtonLink } from "@/components/common/button-link";
 import { PageHeader } from "@/components/common/page-shell";
@@ -14,6 +14,10 @@ import {
   expandSchedules,
   toDateKey,
 } from "@/server/services/schedule-occurrences";
+import {
+  getIndonesianEventsForMonth,
+  getIndonesianEventsMapForRange,
+} from "@/lib/indonesian-calendar";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Kalender" };
@@ -127,6 +131,10 @@ export default async function KalenderPage({
     }
   }
 
+  // Indonesian holidays and commemorative days
+  const indonesianEventsMap = getIndonesianEventsMapForRange(gridStart, gridEnd);
+  const monthEvents = getIndonesianEventsForMonth(year, month);
+
   const todayKey = toDateKey(new Date());
   const monthLabel = format(new Date(year, month, 1), "MMMM yyyy", {
     locale: idLocale,
@@ -145,11 +153,19 @@ export default async function KalenderPage({
     <>
       <PageHeader
         title="Kalender"
-        description="Jadwal rencana dan kegiatan yang benar-benar tercatat."
-        actions={<ButtonLink href="/jadwal" variant="outline">Semua Jadwal</ButtonLink>}
+        description="Jadwal rencana kegiatan, tanggal merah nasional, serta pengingat hari besar untuk poster Instagram."
+        actions={
+          <div className="flex items-center gap-2">
+            <ButtonLink href="/konten" variant="outline" className="gap-1.5">
+              <Palette className="size-4" />
+              Papan Konten IG
+            </ButtonLink>
+            <ButtonLink href="/jadwal" variant="outline">Semua Jadwal</ButtonLink>
+          </div>
+        }
       />
 
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <ButtonLink
             href={`/jadwal/kalender?bulan=${previous}`}
@@ -175,10 +191,13 @@ export default async function KalenderPage({
 
       <div className="overflow-x-auto">
         <div className="border-border grid min-w-3xl grid-cols-7 gap-0.5 overflow-hidden rounded-lg border-2 bg-border shadow-[var(--shadow-brutal)]">
-          {DAY_NAMES.map((day) => (
+          {DAY_NAMES.map((day, idx) => (
             <div
               key={day}
-              className="bg-secondary text-secondary-foreground px-2 py-2 text-center text-xs font-bold uppercase tracking-wide"
+              className={cn(
+                "bg-secondary text-secondary-foreground px-2 py-2 text-center text-xs font-bold uppercase tracking-wide",
+                idx === 0 && "text-red-600 dark:text-red-400 font-black",
+              )}
             >
               {day}
             </div>
@@ -189,6 +208,11 @@ export default async function KalenderPage({
             const inMonth = day >= monthStart && day < monthEnd;
             const daySchedules = scheduleByDay.get(key) ?? [];
             const dayActivities = activityByDay.get(key) ?? [];
+            const dayEvents = indonesianEventsMap.get(key) ?? [];
+
+            const isSunday = day.getUTCDay() === 0;
+            const hasHoliday = dayEvents.some((e) => e.isHoliday);
+            const isRedDate = isSunday || hasHoliday;
 
             return (
               <div
@@ -196,24 +220,67 @@ export default async function KalenderPage({
                 className={cn(
                   "min-h-24 p-1.5",
                   inMonth ? "bg-card" : "bg-muted",
+                  inMonth && hasHoliday && "bg-red-500/5",
                 )}
               >
                 <span
                   className={cn(
                     "inline-flex size-6 items-center justify-center rounded-full text-xs",
-                    key === todayKey && "bg-primary text-primary-foreground border-border border-2 font-bold",
-                    !inMonth && "text-muted-foreground",
+                    key === todayKey &&
+                      "bg-primary text-primary-foreground border-border border-2 font-bold",
+                    key !== todayKey &&
+                      isRedDate &&
+                      inMonth &&
+                      "text-red-600 font-bold dark:text-red-400",
+                    !inMonth && "text-muted-foreground opacity-50",
                   )}
                 >
                   {day.getUTCDate()}
                 </span>
 
                 <div className="mt-1 space-y-1">
-                  {/*
-                    Activities first: what actually happened matters more than
-                    what was planned, and a planned slot that already has an
-                    activity should read as done rather than pending.
-                  */}
+                  {/* Hari Libur Nasional (Tanggal Merah) */}
+                  {dayEvents
+                    .filter((e) => e.isHoliday)
+                    .map((e, idx) => (
+                      <span
+                        key={`holiday-${key}-${idx}`}
+                        title={`Libur Nasional: ${e.name}`}
+                        className="border-red-500/40 bg-red-500/15 text-red-700 dark:text-red-300 block truncate rounded-sm border px-1.5 py-0.5 text-[10px] font-bold"
+                      >
+                        🔴 {e.name}
+                      </span>
+                    ))}
+
+                  {/* Hari Peringatan Nasional (Cocok untuk Ide Poster IG) */}
+                  {dayEvents
+                    .filter((e) => !e.isHoliday)
+                    .map((e, idx) => (
+                      <Link
+                        key={`comm-${key}-${idx}`}
+                        href={`/konten?tambah=1&title=${encodeURIComponent(
+                          "Poster Instagram: " + e.name,
+                        )}&targetDate=${e.dateKey}&desc=${encodeURIComponent(
+                          "Rencana poster & ucapan media sosial untuk memperingati " +
+                            e.name +
+                            (e.suggestedContent
+                              ? ". Ide: " + e.suggestedContent
+                              : ""),
+                        )}&contentType=${encodeURIComponent(
+                          "Feeds / Poster / Carousel",
+                        )}`}
+                        title={`Hari Peringatan: ${e.name}. ${
+                          e.suggestedContent
+                            ? `Ide poster: ${e.suggestedContent}`
+                            : "Klik untuk buat ide poster IG!"
+                        }`}
+                        className="border-purple-500/40 bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 dark:text-purple-300 block truncate rounded-sm border px-1.5 py-0.5 text-[10px] font-bold transition-colors"
+                      >
+                        🎨 {e.name}
+                      </Link>
+                    ))}
+
+                  {/* Kegiatan yang Terlaksana */}
                   {dayActivities.map((activity) => (
                     <Link
                       key={activity.id}
@@ -233,6 +300,7 @@ export default async function KalenderPage({
                     </Link>
                   ))}
 
+                  {/* Rencana Jadwal Rutin */}
                   {daySchedules.map((occurrence) => (
                     <span
                       key={`${occurrence.scheduleId}-${key}`}
@@ -248,6 +316,89 @@ export default async function KalenderPage({
           })}
         </div>
       </div>
+
+      {/* Panel Agenda Hari Besar & Poster Instagram */}
+      <section className="mt-8" aria-label="Agenda Hari Besar & Ide Konten">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="font-heading text-base tracking-tight flex items-center gap-2">
+              <Sparkles className="size-4 text-purple-600 dark:text-purple-400" />
+              Agenda Hari Besar & Rencana Poster Instagram ({monthLabel})
+            </h3>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              Daftar tanggal merah dan hari peringatan nasional untuk persiapan materi ajar dan publikasi media sosial.
+            </p>
+          </div>
+          <ButtonLink href="/konten" variant="outline" size="sm" className="gap-1.5 text-xs">
+            <Palette className="size-3.5" />
+            Buka Papan Konten
+          </ButtonLink>
+        </div>
+
+        {monthEvents.length === 0 ? (
+          <div className="rounded-lg border-2 border-border p-4 text-center text-xs text-muted-foreground bg-card">
+            Tidak ada hari libur nasional atau peringatan khusus pada bulan {monthLabel}.
+          </div>
+        ) : (
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {monthEvents.map((event) => {
+              const [, , dayNum] = event.dateKey.split("-");
+              return (
+                <div
+                  key={`${event.dateKey}-${event.name}`}
+                  className="rounded-lg border-2 border-border bg-card p-3 shadow-[var(--shadow-brutal-sm)] flex flex-col justify-between gap-2.5"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-heading text-xs font-bold px-2 py-0.5 rounded border border-border bg-muted">
+                        {dayNum} {monthLabel.split(" ")[0]}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                          event.isHoliday
+                            ? "bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/30"
+                            : "bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30",
+                        )}
+                      >
+                        {event.isHoliday ? "Libur Nasional" : "Hari Peringatan"}
+                      </span>
+                    </div>
+
+                    <p className="font-heading text-sm font-bold mt-2">
+                      {event.name}
+                    </p>
+
+                    {event.suggestedContent ? (
+                      <p className="text-muted-foreground text-xs mt-1 italic">
+                        💡 {event.suggestedContent}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <Link
+                    href={`/konten?tambah=1&title=${encodeURIComponent(
+                      "Poster Instagram: " + event.name,
+                    )}&targetDate=${event.dateKey}&desc=${encodeURIComponent(
+                      "Rencana poster & ucapan media sosial untuk memperingati " +
+                        event.name +
+                        (event.suggestedContent
+                          ? ". Ide: " + event.suggestedContent
+                          : ""),
+                    )}&contentType=${encodeURIComponent(
+                      "Feeds / Poster / Carousel",
+                    )}`}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-md border-2 border-border bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-colors mt-1"
+                  >
+                    <Palette className="size-3.5" />
+                    Buat Rencana Poster IG
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </>
   );
 }
@@ -257,11 +408,11 @@ function Legend() {
     <ul className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
       <li className="flex items-center gap-1.5">
         <span className="size-3 rounded border border-dashed" />
-        Jadwal
+        Jadwal Rutin
       </li>
       <li className="flex items-center gap-1.5">
         <span className="size-3 rounded bg-amber-500/40" />
-        Draft
+        Draft Kegiatan
       </li>
       <li className="flex items-center gap-1.5">
         <span className="size-3 rounded bg-green-600/40" />
@@ -270,6 +421,14 @@ function Legend() {
       <li className="flex items-center gap-1.5">
         <span className="bg-destructive/40 size-3 rounded" />
         Dibatalkan
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span className="size-3 rounded bg-red-500/40" />
+        Libur Nasional
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span className="size-3 rounded bg-purple-500/40" />
+        Hari Peringatan (Poster IG)
       </li>
     </ul>
   );

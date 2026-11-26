@@ -5,7 +5,9 @@ import { prisma } from "@/lib/db/prisma";
 import {
   sendNotificationToUser,
   sendScheduleRemindersToday,
+  sendDailyAutomatedReminders,
   type ScheduleReminderResult,
+  type DailyAutomatedReminderResult,
 } from "@/server/services/push-notification";
 import { fail, handleUnexpected, ok, type ActionResult } from "./types";
 
@@ -129,10 +131,34 @@ export async function broadcastTodayScheduleRemindersAction(): Promise<
   }
 }
 
+export async function broadcastDailyAutomatedRemindersAction(): Promise<
+  ActionResult<DailyAutomatedReminderResult>
+> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") {
+    return fail("Hanya Admin yang dapat memicu pengingat otomatis harian.");
+  }
+
+  try {
+    const result = await sendDailyAutomatedReminders();
+    return ok(result);
+  } catch (error) {
+    return handleUnexpected(
+      "broadcastDailyAutomatedRemindersAction",
+      error,
+      "Gagal menjalankan otomasi pengingat harian.",
+    );
+  }
+}
+
 function isValidVapidKey(key?: string | null): boolean {
   if (!key) return false;
-  const clean = key.replace(/['"]+/g, "").trim();
-  return clean.length >= 80 && /^[A-Za-z0-9_-]+$/.test(clean);
+  const clean = key.replace(/['"\s\r\n]+/g, "").trim();
+  return (
+    clean.length >= 80 &&
+    clean.length % 4 !== 1 &&
+    /^[A-Za-z0-9_-]+$/.test(clean)
+  );
 }
 
 export async function getUserPushSubscriptionCountAction(): Promise<
@@ -145,7 +171,7 @@ export async function getUserPushSubscriptionCountAction(): Promise<
 
   const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const vapidPublicKey = isValidVapidKey(rawKey)
-    ? rawKey!.replace(/['"]+/g, "").trim()
+    ? rawKey!.replace(/['"\s\r\n]+/g, "").trim()
     : "";
 
   return ok({

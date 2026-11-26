@@ -31,6 +31,8 @@ import {
   sendPushNotification,
   sendNotificationToUser,
   sendScheduleRemindersToday,
+  sendCommemorativeDayReminders,
+  sendDailyAutomatedReminders,
 } from "./push-notification";
 
 describe("Push Notification Service", () => {
@@ -133,6 +135,25 @@ describe("Push Notification Service", () => {
       expect(result.totalTargetTeachers).toBe(0);
       expect(result.totalDevicesNotified).toBe(0);
       expect(result.totalSessionsToday).toBe(0);
+    });
+  });
+
+  describe("sendCommemorativeDayReminders & sendDailyAutomatedReminders", () => {
+    it("handles zero subscriptions gracefully for commemorative reminders", async () => {
+      (prisma.pushSubscription.findMany as any).mockResolvedValueOnce([]);
+
+      const result = await sendCommemorativeDayReminders();
+      expect(result.totalDevicesNotified).toBe(0);
+    });
+
+    it("runs daily automated reminders returning both results", async () => {
+      (prisma.schedule.findMany as any).mockResolvedValueOnce([]);
+      (prisma.activity.findMany as any).mockResolvedValueOnce([]);
+      (prisma.pushSubscription.findMany as any).mockResolvedValueOnce([]);
+
+      const dailyResult = await sendDailyAutomatedReminders();
+      expect(dailyResult).toHaveProperty("schedule");
+      expect(dailyResult).toHaveProperty("commemorative");
     });
   });
 });

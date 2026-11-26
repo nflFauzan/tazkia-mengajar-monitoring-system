@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sendScheduleRemindersToday } from "@/server/services/push-notification";
+import { sendDailyAutomatedReminders } from "@/server/services/push-notification";
 
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -15,17 +15,18 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await sendScheduleRemindersToday();
+    const result = await sendDailyAutomatedReminders();
     return NextResponse.json({
       ok: true,
-      message: "Schedule reminders push dispatched.",
+      message: "Daily automated reminders (schedules & commemorative days) dispatched successfully.",
       result,
     });
   } catch (error) {
-    console.error("[Cron] Schedule reminders push error:", error);
+    console.error("[Cron] Daily automated reminders error:", error);
     return NextResponse.json(
-      { ok: false, error: "Failed to dispatch reminders." },
+      { ok: false, error: "Failed to dispatch automated reminders." },
       { status: 500 },
     );
   }
 }
+
