@@ -289,18 +289,21 @@ export function DocumentationPanel({
               </p>
             </div>
           </div>
-          <a
-            href={driveFolderUrl?.startsWith("https://") ? driveFolderUrl : "#"}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => {
+              if (driveFolderUrl && /^https:\/\/drive\.google\.com\//.test(driveFolderUrl)) {
+                window.open(driveFolderUrl, "_blank", "noopener,noreferrer");
+              }
+            }}
             className={cn(
               buttonVariants({ variant: "default", size: "sm" }),
-              "shrink-0 flex items-center gap-1.5",
+              "shrink-0 flex items-center gap-1.5 cursor-pointer",
             )}
           >
             Buka Google Drive
             <ExternalLink className="size-3.5" />
-          </a>
+          </button>
         </div>
       ) : null}
 
@@ -381,15 +384,18 @@ export function DocumentationPanel({
           <div className="flex items-center justify-between text-xs font-medium text-muted-foreground px-1">
             <span>Berkas Terunggah ({documents.length})</span>
             {driveFolderUrl && (
-              <a
-                href={driveFolderUrl.startsWith("https://") ? driveFolderUrl : "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary hover:underline flex items-center gap-1"
+              <button
+                type="button"
+                onClick={() => {
+                  if (driveFolderUrl && /^https:\/\/drive\.google\.com\//.test(driveFolderUrl)) {
+                    window.open(driveFolderUrl, "_blank", "noopener,noreferrer");
+                  }
+                }}
+                className="text-primary hover:underline flex items-center gap-1 cursor-pointer"
               >
                 Lihat Semua di Google Drive
                 <ExternalLink className="size-3" />
-              </a>
+              </button>
             )}
           </div>
 
