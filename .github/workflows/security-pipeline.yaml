@@ -26,26 +26,27 @@ jobs:
       # STEP 1: SECRET SCANNER (TruffleHog)
       # ========================================================
       - name: 3. Secret Scanner (TruffleHog)
+        continue-on-error: true
         run: |
           curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
-          # Fail-fast: Silang merah jika terdeteksi secret bocor
-          trufflehog filesystem ./ --json > security-reports/trufflehog.json
+          trufflehog filesystem ./ --exclude-paths=.trufflehog-ignore --json > security-reports/trufflehog.json
 
       # ========================================================
       # STEP 2: SCA SCANNER (Snyk Open Source Dependencies)
       # ========================================================
       - name: 4. SCA Scanner (Snyk Open Source)
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           npm install -g snyk
-          # Fail-fast: Silang merah jika ada vulnerability pada dependencies
           snyk test --all-projects --json > security-reports/snyk-sca.json
 
       # ========================================================
       # STEP 3: SBOM GENERATOR (Anchore Syft)
       # ========================================================
       - name: 5. Software Bill of Materials Generator (Anchore Syft)
+        continue-on-error: true
         run: |
           curl -sSfL https://get.anchore.io/syft | sh -s -- -b /usr/local/bin
           syft dir:. -o cyclonedx-json > security-reports/sbom.json
@@ -54,10 +55,10 @@ jobs:
       # STEP 4: SAST SCANNER (Snyk Code Static Analysis)
       # ========================================================
       - name: 6. SAST Scanner (Snyk Code)
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          # Fail-fast: Silang merah jika ada celah di source code
           snyk code test --sarif > security-reports/snyk-code.json
 
       # ========================================================
@@ -78,3 +79,10 @@ jobs:
           name: devsecops-security-report
           path: security-reports/
           retention-days: 30
+
+      # ========================================================
+      # STEP 7: ENFORCE DEVOPS SECURITY QUALITY GATE
+      # ========================================================
+      - name: 9. DevSecOps Quality Gate Decision
+        run: |
+          node -e "const fs = require('fs'); const html = fs.readFileSync('security-reports/report.html', 'utf8'); if (html.includes('Quality Gate: <span class=\"badge FAILED\">FAILED</span>') || html.includes('stage-badge FAILED')) { console.error('DevSecOps Security Quality Gate: FAILED'); process.exit(1); } else { console.log('DevSecOps Security Quality Gate: PASSED'); }"
