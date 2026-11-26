@@ -13,9 +13,6 @@ import {
   sendTestPushNotificationAction,
 } from "@/server/actions/notifications";
 
-const FALLBACK_VAPID_PUBLIC_KEY =
-  "BCxHLSJaqmUMJ4zmjLbLzT71A2b90VmFKDlimx49amZRqrQ1OqYfNOqkAAIKQJ_nStPELnYCRyoNS2rR2DVVYWg";
-
 function isValidVapidKey(key?: string | null): boolean {
   if (!key) return false;
   const clean = key.replace(/['"]+/g, "").trim();
@@ -24,9 +21,11 @@ function isValidVapidKey(key?: string | null): boolean {
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const clean = base64String ? base64String.replace(/['"]+/g, "").trim() : "";
-  const keyToDecode = isValidVapidKey(clean) ? clean : FALLBACK_VAPID_PUBLIC_KEY;
+  if (!clean) {
+    throw new Error("Missing VAPID public key");
+  }
 
-  const unpadded = keyToDecode.replace(/=+$/, "");
+  const unpadded = clean.replace(/=+$/, "");
   const padding = "=".repeat((4 - (unpadded.length % 4)) % 4);
   const base64 = (unpadded + padding).replace(/-/g, "+").replace(/_/g, "/");
 
@@ -40,15 +39,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
     }
     return outputArray;
   } catch (err) {
-    console.warn("[Push] Error decoding VAPID key with atob, using fallback:", err);
-    const fallbackBase64 = (FALLBACK_VAPID_PUBLIC_KEY + "=").replace(/-/g, "+").replace(/_/g, "/");
-    const rawData = window.atob(fallbackBase64);
-    const buffer = new ArrayBuffer(rawData.length);
-    const outputArray = new Uint8Array(buffer);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
+    console.error("[Push] Error decoding VAPID key with atob:", err);
+    throw err;
   }
 }
 
@@ -130,7 +122,8 @@ export function PushNotificationBanner() {
           keyToUse = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
         }
         if (!isValidVapidKey(keyToUse)) {
-          keyToUse = FALLBACK_VAPID_PUBLIC_KEY;
+          toast.error("VAPID public key belum dikonfigurasi.");
+          return;
         }
 
         const perm = await Notification.requestPermission();

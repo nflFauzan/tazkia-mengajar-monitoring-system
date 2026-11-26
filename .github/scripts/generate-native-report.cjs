@@ -135,7 +135,14 @@ function parseSnykCode() {
         return false;
       }
 
-      if (location.includes('/seeds/') || location.includes('/seeders/') || location.includes('/factories/') || location.includes('/fixtures/')) {
+      if (
+        location.includes('/seeds/') ||
+        location.includes('/seeders/') ||
+        location.includes('/factories/') ||
+        location.includes('/fixtures/') ||
+        location.includes('seed.ts') ||
+        location.includes('seed.js')
+      ) {
         return false;
       }
 

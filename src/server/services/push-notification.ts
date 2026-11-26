@@ -13,12 +13,7 @@ export interface PushPayload {
 
 let isVapidConfigured = false;
 
-const FALLBACK_VAPID_PUBLIC_KEY =
-  "BCxHLSJaqmUMJ4zmjLbLzT71A2b90VmFKDlimx49amZRqrQ1OqYfNOqkAAIKQJ_nStPELnYCRyoNS2rR2DVVYWg";
-const FALLBACK_VAPID_PRIVATE_KEY =
-  "t-7GshHSK_eqxBTE5-Kch1rPslV0CDZe5p7rpz2yInM";
-
-function isValidVapidKey(key?: string | null, minLen = 40): boolean {
+function isValidVapidKey(key?: string | null, minLen = 10): boolean {
   if (!key) return false;
   const clean = key.replace(/['"]+/g, "").trim();
   return clean.length >= minLen && /^[A-Za-z0-9_-]+$/.test(clean);
@@ -31,14 +26,13 @@ function ensureVapidConfigured(): boolean {
   const rawPrivateKey = process.env.VAPID_PRIVATE_KEY;
   const rawSubject = process.env.VAPID_SUBJECT || "mailto:admin@tazkiamengajar.id";
 
-  const publicKey = isValidVapidKey(rawPublicKey, 80)
-    ? rawPublicKey!.replace(/['"]+/g, "").trim()
-    : FALLBACK_VAPID_PUBLIC_KEY;
+  if (!isValidVapidKey(rawPublicKey, 10) || !isValidVapidKey(rawPrivateKey, 10)) {
+    console.warn("[Push] VAPID keys not configured in environment variables.");
+    return false;
+  }
 
-  const privateKey = isValidVapidKey(rawPrivateKey, 40)
-    ? rawPrivateKey!.replace(/['"]+/g, "").trim()
-    : FALLBACK_VAPID_PRIVATE_KEY;
-
+  const publicKey = rawPublicKey!.replace(/['"]+/g, "").trim();
+  const privateKey = rawPrivateKey!.replace(/['"]+/g, "").trim();
   const subject = rawSubject.replace(/['"]+/g, "").trim();
 
   try {
