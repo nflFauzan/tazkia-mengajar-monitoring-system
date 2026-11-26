@@ -163,13 +163,9 @@ function parseSnykCode() {
       return true;
     });
 
-    const blocking = productionFindings.filter(r => {
-      const level = String(r?.level || 'warning').toLowerCase();
-      return level === 'error';
-    });
-
+    // Strict Mode (Opsi B): Seluruh temuan keamanan kode (termasuk WARNING) menggagalkan Security Gate
     return {
-      status: blocking.length > 0 ? 'FAILED' : 'PASSED',
+      status: productionFindings.length > 0 ? 'FAILED' : 'PASSED',
       count: productionFindings.length,
       findings: productionFindings.map(r => ({
         ruleId: r?.ruleId || 'CODE_ISSUE',
