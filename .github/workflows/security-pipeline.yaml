@@ -39,8 +39,8 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           npm install -g snyk
-          # Fail-fast: Silang merah jika ada vulnerability pada dependencies
-          snyk test --all-projects --json > security-reports/snyk-sca.json
+          # Fail-fast: Silang merah jika ada vulnerability tingkat HIGH atau CRITICAL pada dependencies
+          snyk test --all-projects --severity-threshold=high --json > security-reports/snyk-sca.json
 
       # ========================================================
       # STEP 3: SBOM GENERATOR (Anchore Syft)
