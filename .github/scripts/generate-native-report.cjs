@@ -127,6 +127,7 @@ function parseSnykCode() {
         ruleId.includes('/test') ||
         location.startsWith('tests/') ||
         location.startsWith('test/') ||
+        location.startsWith('scripts/') ||
         location.includes('/__tests__/') ||
         location.includes('.test.') ||
         location.includes('.spec.') ||

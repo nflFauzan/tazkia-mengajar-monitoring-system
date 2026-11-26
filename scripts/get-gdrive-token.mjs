@@ -94,7 +94,7 @@ async function main() {
     } catch (err) {
       console.error("\n❌ Error saat menukar token:", err);
       res.writeHead(500, { "Content-Type": "text/plain" });
-      res.end("Internal Server Error: " + err.message);
+      res.end("Internal Server Error: Gagal memproses otorisasi Google Drive.");
       server.close();
       process.exit(1);
     }

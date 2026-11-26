@@ -122,8 +122,9 @@ export async function firstTimeChangePasswordAction(
     );
 
     if (!currentMatches) {
-      return fail("Password saat ini salah.", {
-        currentPassword: "Password saat ini salah.",
+      const errorMessage = "Password saat ini salah.";
+      return fail(errorMessage, {
+        currentPassword: errorMessage,
       });
     }
 

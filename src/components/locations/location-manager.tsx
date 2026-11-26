@@ -314,7 +314,7 @@ function LocationFormDialogInner({
           {lat && lng ? (
             <div className="pb-2">
               <a
-                href={`https://www.google.com/maps?q=${lat},${lng}`}
+                href={`https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-primary hover:underline inline-flex items-center gap-1"

@@ -290,7 +290,7 @@ export function DocumentationPanel({
             </div>
           </div>
           <a
-            href={driveFolderUrl}
+            href={driveFolderUrl?.startsWith("https://") ? driveFolderUrl : "#"}
             target="_blank"
             rel="noreferrer"
             className={cn(
@@ -382,7 +382,7 @@ export function DocumentationPanel({
             <span>Berkas Terunggah ({documents.length})</span>
             {driveFolderUrl && (
               <a
-                href={driveFolderUrl}
+                href={driveFolderUrl.startsWith("https://") ? driveFolderUrl : "#"}
                 target="_blank"
                 rel="noreferrer"
                 className="text-primary hover:underline flex items-center gap-1"
